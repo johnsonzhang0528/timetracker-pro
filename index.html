@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="TimeTracker Pro - 專為自由工作者設計的智能時間追蹤與計費工具" />
+    <meta name="keywords" content="時間追蹤, 計費工具, 自由工作者, 發票生成, 工作記錄" />
+    <meta name="author" content="TimeTracker Pro" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="TimeTracker Pro - 智能時間追蹤工具" />
+    <meta property="og:description" content="專為自由工作者設計的時間追蹤與計費解決方案" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="TimeTracker Pro - 智能時間追蹤工具" />
+    <meta property="twitter:description" content="專為自由工作者設計的時間追蹤與計費解決方案" />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <title>TimeTracker Pro - 智能時間追蹤工具</title>
+    
+    <style>
+      /* 載入畫面樣式 */
+      #loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.3s ease-out;
+      }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e2e8f0;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 16px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        color: #64748b;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      
+      /* 防止載入時的閃爍 */
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background: #f8fafc;
+        overflow-x: hidden;
+      }
+      
+      #root {
+        min-height: 100vh;
+      }
+      
+      /* 響應式字體大小 */
+      @media (max-width: 640px) {
+        html {
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 載入畫面 -->
+    <div id="loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">載入 TimeTracker Pro...</div>
+    </div>
+    
+    <!-- React 應用掛載點 -->
+    <div id="root"></div>
+    
+    <script type="module" src="/main.jsx"></script>
+    
+    <script>
+      // 隱藏載入畫面
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const loading = document.getElementById('loading');
+          if (loading) {
+            loading.style.opacity = '0';
+            setTimeout(function() {
+              loading.style.display = 'none';
+            }, 300);
+          }
+        }, 1000); // 顯示載入畫面至少 1 秒
+      });
+      
+      // 錯誤處理
+      window.addEventListener('error', function(e) {
+        console.error('應用程式錯誤:', e.error);
+        const loading = document.getElementById('loading');
+        if (loading) {
+          loading.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <div style="color: #ef4444; font-size: 18px; margin-bottom: 10px;">😅 載入遇到問題</div>
+              <div style="color: #64748b; font-size: 14px;">請重新整理頁面或檢查網路連線</div>
+              <button onclick="window.location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">重新載入</button>
+            </div>
+          `;
+        }
+      });
+    </script>
+  </body>
+</html>
