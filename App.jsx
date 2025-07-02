@@ -108,6 +108,7 @@ const App = () => {
 
   // 認證載入中顯示
   if (authLoading) {
+    console.log('⏳ App 組件 - 認證載入中');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -120,13 +121,15 @@ const App = () => {
 
   // 未登入時顯示認證頁面
   if (!isAuthenticated) {
-    console.log('🚪 顯示認證頁面，isAuthenticated =', isAuthenticated);
+    console.log('🚪 App 組件 - 顯示認證頁面，isAuthenticated =', isAuthenticated);
     return <Auth onAuthSuccess={() => {
       console.log('🎯 onAuthSuccess 回調被調用');
       console.log('🔄 設置 activeTab 為 TRACKER');
       setActiveTab(TABS.TRACKER);
     }} />;
   }
+
+  console.log('✅ App 組件 - 用戶已認證，顯示主應用，當前頁面:', activeTab);
 
   // 渲染當前頁面內容
   const renderCurrentTab = () => {

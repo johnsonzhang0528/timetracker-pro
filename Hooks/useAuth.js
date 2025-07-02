@@ -195,6 +195,47 @@ export const useAuth = () => {
     }
   }, []);
 
+  // 登出所有設備
+  const logoutAllDevices = useCallback(async () => {
+    console.log('🔐 logoutAllDevices 函數開始執行');
+    try {
+      setIsLoading(true);
+      console.log('⏳ 設置 loading 狀態為 true');
+      
+      // 在實際應用中，這裡會調用後端 API 使所有該用戶的 token 失效
+      console.log('📞 調用 mockLogoutAllDevicesAPI，用戶ID:', user?.id);
+      const response = await mockLogoutAllDevicesAPI(user?.id);
+      console.log('📊 API 響應:', response);
+      
+      if (response.success) {
+        console.log('✅ API 調用成功，開始清除本地狀態');
+        
+        // 清除本地儲存
+        localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+        localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+        console.log('🗑️ 已清除本地儲存');
+        
+        // 清除用戶狀態
+        setUser(null);
+        setIsAuthenticated(false);
+        setError(null);
+        console.log('🔄 已更新認證狀態: isAuthenticated = false');
+        
+        return { success: true, message: '已成功登出所有設備' };
+      } else {
+        console.error('❌ API 調用失敗:', response.message);
+        return { success: false, message: response.message };
+      }
+    } catch (error) {
+      console.error('💥 登出所有設備失敗:', error);
+      return { success: false, message: '登出所有設備過程中發生錯誤' };
+    } finally {
+      setIsLoading(false);
+      console.log('⏳ 設置 loading 狀態為 false');
+    }
+  }, [user]);
+
   // 更新用戶資料
   const updateUser = useCallback(async (updates) => {
     try {
@@ -255,6 +296,7 @@ export const useAuth = () => {
     login,
     register,
     logout,
+    logoutAllDevices,
     updateUser,
     forgotPassword,
     checkAuthStatus,
@@ -361,6 +403,16 @@ const mockForgotPasswordAPI = async (email) => {
         });
       }
     }, 600);
+  });
+};
+
+const mockLogoutAllDevicesAPI = async (userId) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        success: true
+      });
+    }, 500);
   });
 };
 

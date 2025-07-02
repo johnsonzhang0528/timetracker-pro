@@ -3,10 +3,10 @@ import {
   User, Mail, Clock, Bell, Shield, 
   Save, Edit3, CheckCircle
 } from 'lucide-react';
-import { useAuth } from '../Hooks/useAuth';
+import { useAuthContext } from '../Hooks/useAuth';
 
 const UserProfile = () => {
-  const { user, updateUser, logout, isLoading } = useAuth();
+  const { user, updateUser, logout, logoutAllDevices, isLoading } = useAuthContext();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -62,7 +62,37 @@ const UserProfile = () => {
   // 處理登出
   const handleLogout = async () => {
     if (window.confirm('確定要登出嗎？')) {
-      await logout();
+      const result = await logout();
+      // 登出成功會自動跳轉到登入頁面，不需要額外處理
+      if (!result.success) {
+        alert(result.message || '登出失敗，請稍後再試');
+      }
+    }
+  };
+
+  // 處理登出所有設備
+  const handleLogoutAllDevices = async () => {
+    console.log('🚪 開始登出所有設備流程');
+    if (window.confirm('確定要登出所有設備嗎？這將會登出所有已登入此帳戶的設備。')) {
+      try {
+        console.log('✅ 用戶確認登出，開始調用 logoutAllDevices');
+        const result = await logoutAllDevices();
+        console.log('📊 logoutAllDevices 結果:', result);
+        
+        // 不需要顯示 alert，因為會自動跳轉到登入頁面
+        // 如果失敗才顯示錯誤訊息
+        if (!result.success) {
+          console.error('❌ 登出所有設備失敗:', result.message);
+          alert(result.message || '登出所有設備失敗，請稍後再試');
+        } else {
+          console.log('✅ 登出所有設備成功，應該會自動跳轉到登入頁面');
+        }
+      } catch (error) {
+        console.error('💥 登出所有設備過程中發生錯誤:', error);
+        alert('登出所有設備過程中發生錯誤，請稍後再試');
+      }
+    } else {
+      console.log('❌ 用戶取消登出所有設備');
     }
   };
 
@@ -433,7 +463,8 @@ const UserProfile = () => {
                   登出所有設備
                 </div>
                 <button
-                  onClick={handleLogout}
+                  onClick={handleLogoutAllDevices}
+                  disabled={isLoading}
                   style={{
                     padding: '6px 12px',
                     background: '#dc2626',
@@ -441,10 +472,11 @@ const UserProfile = () => {
                     border: 'none',
                     borderRadius: '6px',
                     fontSize: '12px',
-                    cursor: 'pointer'
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    opacity: isLoading ? 0.6 : 1
                   }}
                 >
-                  登出
+                  {isLoading ? '處理中...' : '登出所有設備'}
                 </button>
               </div>
               <div style={{ fontSize: '12px', color: '#b91c1c' }}>
