@@ -694,3 +694,20 @@
     border: 1px solid #ccc !important;
   }
 }
+
+/* ===== 導航列響應式強制規則 ===== */
+@layer utilities {
+  /* 確保漢堡選單在桌面版完全隱藏 */
+  @media (min-width: 768px) {
+    .mobile-menu-button {
+      display: none !important;
+    }
+  }
+  
+  /* 確保桌面導航在手機版完全隱藏 */
+  @media (max-width: 767px) {
+    .desktop-navigation {
+      display: none !important;
+    }
+  }
+}

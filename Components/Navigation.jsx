@@ -5,6 +5,28 @@ import { APP_TITLE, TABS } from '../Constants';
 const Navigation = ({ activeTab, setActiveTab }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 監聽螢幕尺寸變化
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+      // 當螢幕變大時，關閉手機選單
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    
+    // 初始檢查
+    checkScreenSize();
+    
+    // 監聽尺寸變化
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, []);
 
   // 監聽滾動以調整導航樣式
   useEffect(() => {
@@ -73,10 +95,10 @@ const Navigation = ({ activeTab, setActiveTab }) => {
             : 'shadow-sm border-b border-gray-100'
         }`}
       >
-        <div className="max-w-7xl mx-auto safe-left safe-right">
+        <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
             
-            {/* Logo 區域 - 響應式優化 */}
+            {/* Logo 區域 */}
             <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
               <div className="relative">
                 <Clock className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 transition-transform duration-200 hover:scale-110" />
@@ -93,8 +115,9 @@ const Navigation = ({ activeTab, setActiveTab }) => {
               </div>
             </div>
             
-            {/* 桌面導航 - 優化樣式 */}
-            <div className="hidden lg:flex items-center space-x-1">
+            {/* 桌面導航 - 只在桌面版顯示 */}
+            {!isMobile && (
+              <div className="desktop-navigation flex items-center space-x-1">
               {navItems.map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -103,7 +126,7 @@ const Navigation = ({ activeTab, setActiveTab }) => {
                   <button
                     key={item.id}
                     onClick={() => handleTabClick(item.id)}
-                    className={`group relative px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    className={`group relative px-3 lg:px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                       isActive 
                         ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg' 
                         : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
@@ -114,7 +137,8 @@ const Navigation = ({ activeTab, setActiveTab }) => {
                       <Icon className={`w-4 h-4 transition-transform duration-200 ${
                         isActive ? 'text-white' : 'group-hover:scale-110'
                       }`} />
-                      <span>{item.label}</span>
+                      <span className="hidden lg:inline">{item.label}</span>
+                      <span className="lg:hidden">{item.shortLabel}</span>
                     </div>
                     
                     {/* 活動指示器 */}
@@ -124,51 +148,30 @@ const Navigation = ({ activeTab, setActiveTab }) => {
                   </button>
                 );
               })}
-            </div>
+              </div>
+            )}
 
-            {/* 平板導航 - 圖示 + 文字 */}
-            <div className="hidden md:flex lg:hidden items-center space-x-1">
-              {navItems.map(item => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleTabClick(item.id)}
-                    className={`flex flex-col items-center p-3 rounded-xl text-xs font-medium transition-all duration-200 min-w-[80px] ${
-                      isActive 
-                        ? 'bg-blue-600 text-white shadow-md' 
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                    title={item.description}
-                  >
-                    <Icon className="w-5 h-5 mb-1" />
-                    <span>{item.shortLabel}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 手機菜單按鈕 */}
-            <button
-              onClick={toggleMobileMenu}
-              className="md:hidden p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors touch-target"
-              aria-label="開啟選單"
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
+            {/* 手機菜單按鈕 - 只在手機版顯示 */}
+            {isMobile && (
+              <button
+                onClick={toggleMobileMenu}
+                className="mobile-menu-button flex p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors touch-target"
+                aria-label="開啟選單"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* 手機下拉選單 */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg animate-slide-down z-40">
-            <div className="px-4 py-2 space-y-1 safe-left safe-right">
+        {/* 手機下拉選單 - 只在手機版且選單開啟時顯示 */}
+        {isMobile && isMobileMenuOpen && (
+          <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg animate-slide-down z-40">
+            <div className="px-4 py-2 space-y-1">
               {navItems.map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -203,47 +206,10 @@ const Navigation = ({ activeTab, setActiveTab }) => {
         )}
       </nav>
 
-      {/* 底部導航 (手機專用) - 更好的可達性 */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-bottom z-50">
-        <div className="grid grid-cols-4 gap-1 px-2 py-1">
-          {navItems.map(item => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabClick(item.id)}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg transition-all duration-200 touch-target ${
-                  isActive 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                }`}
-                aria-label={item.label}
-              >
-                <div className="relative">
-                  <Icon className={`w-5 h-5 transition-transform duration-200 ${
-                    isActive ? 'scale-110' : 'group-active:scale-95'
-                  }`} />
-                  {isActive && (
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-600 rounded-full" />
-                  )}
-                </div>
-                <span className={`text-xs font-medium mt-1 transition-colors duration-200 ${
-                  isActive ? 'text-blue-600' : 'text-gray-600'
-                }`}>
-                  {item.shortLabel}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 遮罩層 (當手機選單開啟時) */}
-      {isMobileMenuOpen && (
+      {/* 遮罩層 (當手機選單開啟時) - 只在手機版顯示 */}
+      {isMobile && isMobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black bg-opacity-20 z-30"
+          className="fixed inset-0 bg-black bg-opacity-20 z-30"
           onClick={() => setIsMobileMenuOpen(false)}
           aria-hidden="true"
         />

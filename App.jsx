@@ -149,13 +149,13 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 safe-top safe-bottom">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       
       {/* 導航組件 */}
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
       
       {/* 主要內容區域 - 響應式容器 */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="max-w-6xl mx-auto">
           {renderCurrentTab()}
         </div>
@@ -170,11 +170,6 @@ const App = () => {
           position="top-right"
         />
       )}
-
-      {/* PWA 安裝提示 (移動端) */}
-      <div className="md:hidden fixed bottom-20 left-4 right-4 z-40">
-        {/* 可以在這裡添加 PWA 安裝提示 */}
-      </div>
 
       {/* 無障礙輔助 */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">

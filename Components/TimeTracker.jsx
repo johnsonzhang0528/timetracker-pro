@@ -73,7 +73,7 @@ const TimeTracker = ({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-20 md:pb-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       
       {/* 沒有專案時的引導 */}
       {hasNoProjects && (
