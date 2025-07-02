@@ -118,44 +118,43 @@ const ProjectManager = () => {
 
       {/* 新增專案表單 */}
       {isAddingProject && (
-        <div className="card">
-          <div className="card-header">
+        <div className="form-container">
+          <div className="form-header">
             <h3>新增專案</h3>
             <button 
-              className="btn btn-text"
+              className="btn btn-secondary btn-sm"
               onClick={() => setIsAddingProject(false)}
             >
-              取消
+              ✕ 關閉
             </button>
           </div>
+
           <div className="form-grid">
             <div className="form-group">
-              <label>專案名稱</label>
+              <label>專案名稱 *</label>
               <input
                 type="text"
                 value={newProject.name}
                 onChange={(e) => setNewProject({...newProject, name: e.target.value})}
                 placeholder="輸入專案名稱"
+                className="form-input"
+                required
               />
             </div>
+
             <div className="form-group">
-              <label>時薪 ($)</label>
+              <label>時薪 (NT$)</label>
               <input
                 type="number"
                 value={newProject.hourlyRate}
                 onChange={(e) => setNewProject({...newProject, hourlyRate: e.target.value})}
-                placeholder="50"
+                placeholder="800"
+                className="form-input"
+                min="0"
+                step="50"
               />
             </div>
-            <div className="form-group full-width">
-              <label>專案描述</label>
-              <textarea
-                value={newProject.description}
-                onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                placeholder="專案詳細描述..."
-                rows="3"
-              />
-            </div>
+
             <div className="form-group">
               <label>預估時數</label>
               <input
@@ -163,24 +162,52 @@ const ProjectManager = () => {
                 value={newProject.estimatedHours}
                 onChange={(e) => setNewProject({...newProject, estimatedHours: e.target.value})}
                 placeholder="40"
+                className="form-input"
+                min="0"
+                step="0.5"
               />
             </div>
+
             <div className="form-group">
-              <label>狀態</label>
+              <label>專案狀態</label>
               <select
                 value={newProject.status}
                 onChange={(e) => setNewProject({...newProject, status: e.target.value})}
+                className="form-select"
               >
-                <option value="active">進行中</option>
-                <option value="paused">暫停</option>
-                <option value="completed">已完成</option>
+                <option value="active">🟢 進行中</option>
+                <option value="paused">🟡 暫停</option>
+                <option value="completed">✅ 已完成</option>
               </select>
             </div>
-          </div>
-          <div className="form-actions">
-            <button className="btn btn-primary" onClick={handleAddProject}>
-              新增專案
-            </button>
+
+            <div className="form-group form-group-full">
+              <label>專案描述</label>
+              <textarea
+                value={newProject.description}
+                onChange={(e) => setNewProject({...newProject, description: e.target.value})}
+                placeholder="詳細描述專案內容、目標和需求..."
+                rows="4"
+                className="form-textarea"
+              />
+            </div>
+
+            <div className="form-actions form-group-full">
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setIsAddingProject(false)}
+                type="button"
+              >
+                取消
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={handleAddProject}
+                type="button"
+              >
+                新增專案
+              </button>
+            </div>
           </div>
         </div>
       )}

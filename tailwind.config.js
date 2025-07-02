@@ -2,7 +2,7 @@
 export default {
   content: [
     "./index.html",
-    "./App.jsx",
+    "./App*.jsx",
     "./main.jsx",
     "./Components/**/*.{js,jsx}",
     "./Hooks/**/*.{js,jsx}",
@@ -21,6 +21,7 @@ export default {
     'from-slate-50',
     'via-blue-50', 
     'to-indigo-100',
+<<<<<<< HEAD
     'from-blue-600',
     'to-blue-700',
     'from-green-500',
@@ -52,6 +53,45 @@ export default {
     'safe-bottom',
     'safe-left',
     'safe-right'
+=======
+    'from-blue-50',
+    'to-indigo-50',
+    'from-green-50',
+    'to-emerald-50',
+    'from-purple-50',
+    'to-pink-50',
+    'from-blue-500',
+    'to-indigo-600',
+    'from-green-500',
+    'to-emerald-600',
+    'from-blue-600',
+    'to-indigo-600',
+    'from-green-600',
+    'to-emerald-600',
+    'animate-pulse',
+    'animate-fade-in',
+    'animate-scale-in',
+    'hover:shadow-xl',
+    'transform',
+    'hover:scale-105',
+    'backdrop-blur-sm',
+    'bg-white/80',
+    'border-white/60',
+    'border-white/50',
+    'bg-black/50',
+    'text-transparent',
+    'bg-clip-text',
+    'focus:ring-2',
+    'focus:ring-blue-500/20',
+    'focus:ring-green-500/20',
+    'focus:ring-purple-500/20',
+    'focus:ring-amber-500/20',
+    'focus:ring-indigo-500/20',
+    'focus:ring-red-500/20',
+    'focus:ring-gray-500/20',
+    'transition-all',
+    'duration-200'
+>>>>>>> origin/update-add-projects-and-invioces-table-css
   ],
   theme: {
     // 自定義斷點 - Mobile First

@@ -3,7 +3,7 @@ import Navigation from './Components/Navigation-Modern';
 import TimeTracker from './Components/TimeTracker-Modern';
 import ProjectManager from './Components/ProjectManager-Modern';
 import Reports from './Components/Reports-RWD';
-import Invoice from './Components/Invoice-RWD';
+import InvoiceModern from './Components/Invoice-Modern';
 import Toast from './Components/Toast-RWD';
 import { useTimeTracker, useLocalStorage } from './Hooks/useTimeTracker';
 import { TABS } from './Constants';
@@ -128,7 +128,7 @@ const App = () => {
         return <Reports timeEntries={timeEntries} />;
       
       case TABS.INVOICE:
-        return <Invoice timeEntries={timeEntries} />;
+        return <InvoiceModern timeEntries={timeEntries} />;
       
       default:
         return (
