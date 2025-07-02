@@ -1,0 +1,528 @@
+/* TimeTracker Pro - 完全響應式設計 (RWD) 優化版 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 基礎響應式設定 ===== */
+@layer base {
+  /* HTML 基礎設定 */
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* 防止橫向滾動 */
+    overflow-x: hidden;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+    line-height: 1.6;
+    /* 移動端優化 */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  
+  /* 允許文字選取的元素 */
+  input, textarea, [contenteditable] {
+    user-select: text;
+  }
+  
+  /* 標題響應式字體大小 */
+  h1 {
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold;
+  }
+  
+  h2 {
+    @apply text-xl sm:text-2xl lg:text-3xl font-semibold;
+  }
+  
+  h3 {
+    @apply text-lg sm:text-xl lg:text-2xl font-semibold;
+  }
+  
+  /* 觸控目標最小尺寸 (無障礙標準) */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    background: none;
+    font-family: inherit;
+    /* 觸控回饋 */
+    touch-action: manipulation;
+  }
+  
+  /* 聚焦指示器 */
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  
+  /* 輸入框基礎設定 */
+  input, select, textarea {
+    font-family: inherit;
+    border: none;
+    outline: none;
+    min-height: 44px; /* 觸控友好 */
+  }
+  
+  /* 移動端滾動條隱藏 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  /* 移動端隱藏滾動條 */
+  @media (max-width: 768px) {
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+/* ===== 響應式組件樣式 ===== */
+@layer components {
+  /* 卡片樣式 - 響應式優化 */
+  .card {
+    @apply bg-white rounded-lg sm:rounded-xl lg:rounded-2xl shadow-md sm:shadow-lg border border-gray-100;
+    /* 移動端減少陰影以提升性能 */
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300;
+    /* 桌面端才有 hover 效果 */
+  }
+  
+  @media (hover: hover) {
+    .card-hover:hover {
+      @apply shadow-xl transform scale-[1.02];
+    }
+  }
+  
+  /* 按鈕樣式 - 觸控優化 */
+  .btn {
+    @apply px-4 py-3 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-semibold 
+           transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-2 
+           shadow-md hover:shadow-lg min-h-[44px] flex items-center justify-center;
+    /* 移動端專用樣式 */
+  }
+  
+  .btn-sm {
+    @apply px-3 py-2 text-sm min-h-[44px];
+  }
+  
+  .btn-lg {
+    @apply px-8 py-4 text-lg min-h-[48px];
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+           text-white focus:ring-blue-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 
+           text-gray-700 focus:ring-gray-200;
+  }
+  
+  .btn-success {
+    @apply bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
+           text-white focus:ring-green-200;
+  }
+  
+  .btn-warning {
+    @apply bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 
+           text-white focus:ring-yellow-200;
+  }
+  
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 
+           text-white focus:ring-red-200;
+  }
+  
+  /* 輸入框樣式 - 觸控優化 */
+  .input {
+    @apply px-3 py-3 sm:px-4 sm:py-3 border-2 border-gray-200 rounded-lg sm:rounded-xl 
+           focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200
+           text-base sm:text-sm min-h-[44px];
+    /* 移動端使用較大字體防止縮放 */
+  }
+  
+  .input-error {
+    @apply border-red-500 bg-red-50 focus:ring-red-200 focus:border-red-500;
+  }
+  
+  /* 響應式文字樣式 */
+  .text-responsive {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+  
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm lg:text-base;
+  }
+  
+  /* 間距工具 */
+  .spacing-responsive {
+    @apply p-3 sm:p-4 lg:p-6;
+  }
+  
+  .spacing-responsive-sm {
+    @apply p-2 sm:p-3 lg:p-4;
+  }
+}
+
+/* ===== 響應式工具類別 ===== */
+@layer utilities {
+  /* 觸控優化 */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  .touch-friendly {
+    @apply p-3 sm:p-2;
+  }
+  
+  /* 安全區域 (iPhone 劉海屏) */
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .safe-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+  
+  .safe-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  /* 響應式網格 */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+  
+  .grid-responsive-2 {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6;
+  }
+  
+  /* 文字省略 - 響應式 */
+  .text-ellipsis-responsive {
+    @apply truncate sm:text-ellipsis;
+  }
+  
+  /* 隱藏/顯示工具 */
+  .hide-mobile {
+    @apply hidden sm:block;
+  }
+  
+  .show-mobile {
+    @apply block sm:hidden;
+  }
+  
+  .hide-tablet {
+    @apply hidden lg:block;
+  }
+  
+  .show-tablet {
+    @apply block lg:hidden;
+  }
+  
+  /* 滑動容器 */
+  .scroll-container {
+    @apply overflow-x-auto scrollbar-hide;
+    scroll-snap-type: x mandatory;
+  }
+  
+  .scroll-item {
+    scroll-snap-align: start;
+  }
+  
+  /* 滾動條隱藏 */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ===== 動畫優化 ===== */
+@layer utilities {
+  /* 性能優化的動畫 */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+  
+  /* 懸停效果 - 僅在支援懸停的裝置 */
+  @media (hover: hover) {
+    .hover-lift:hover {
+      transform: translateY(-2px) scale(1.01);
+      transition: transform 0.2s ease;
+    }
+  }
+  
+  /* 觸控反饋 */
+  .active-scale:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ===== 響應式斷點優化 ===== */
+
+/* Extra Small (手機直立) */
+@media (max-width: 374px) {
+  .container {
+    @apply px-2;
+  }
+  
+  .btn {
+    @apply text-sm px-3 py-2;
+  }
+}
+
+/* Small (手機橫躺/小平板) */
+@media (min-width: 375px) and (max-width: 767px) {
+  .container {
+    @apply px-4;
+  }
+}
+
+/* Medium (平板直立) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container {
+    @apply px-6;
+  }
+}
+
+/* Large (平板橫躺/小桌面) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .container {
+    @apply px-8;
+  }
+}
+
+/* Extra Large (大桌面) */
+@media (min-width: 1280px) {
+  .container {
+    @apply px-8;
+  }
+}
+
+/* ===== 特殊裝置優化 ===== */
+
+/* 高解析度螢幕 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .high-dpi-optimized {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* 觸控裝置專用 */
+@media (pointer: coarse) {
+  .btn {
+    @apply min-h-[48px] px-6 py-4;
+  }
+  
+  .input {
+    @apply min-h-[48px] text-base;
+  }
+}
+
+/* 鍵盤裝置專用 */
+@media (pointer: fine) {
+  .btn {
+    @apply min-h-[40px];
+  }
+}
+
+/* ===== 無障礙設計 ===== */
+
+/* 高對比度模式 */
+@media (prefers-contrast: high) {
+  .btn {
+    @apply border-2 border-current;
+  }
+  
+  .card {
+    @apply border-2 border-gray-400;
+  }
+}
+
+/* 減動畫偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 深色模式支援 */
+@media (prefers-color-scheme: dark) {
+  /* 預留深色模式變數 */
+  :root {
+    --bg-primary: #1a202c;
+    --bg-secondary: #2d3748;
+    --text-primary: #f7fafc;
+    --text-secondary: #e2e8f0;
+  }
+}
+
+/* ===== 列印樣式 ===== */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .btn, .card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+  
+  /* 確保列印時字體大小適中 */
+  * {
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+  }
+}
+
+/* ===== 特定組件優化 ===== */
+
+/* 時間顯示器優化 */
+.time-display {
+  @apply font-mono text-3xl sm:text-4xl lg:text-5xl xl:text-6xl;
+  letter-spacing: 0.05em;
+}
+
+/* 導航優化 */
+.nav-mobile {
+  @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-bottom;
+  z-index: 50;
+}
+
+/* 表格響應式 */
+.table-responsive {
+  @apply block sm:table w-full;
+}
+
+.table-responsive thead {
+  @apply hidden sm:table-header-group;
+}
+
+.table-responsive tr {
+  @apply block sm:table-row border-b border-gray-200 mb-4 sm:mb-0;
+}
+
+.table-responsive td {
+  @apply block sm:table-cell py-2 sm:py-4 px-0 sm:px-4;
+}
+
+.table-responsive td:before {
+  content: attr(data-label) ": ";
+  @apply font-semibold text-gray-600 sm:hidden;
+}
+
+/* Toast 通知優化 */
+.toast-container {
+  @apply fixed top-4 right-4 sm:top-6 sm:right-6 z-50 max-w-sm;
+}
+
+/* 載入狀態 */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  @apply rounded;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 效能優化 */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* 避免重新計算 */
+.contain-layout {
+  contain: layout;
+}
+
+.contain-paint {
+  contain: paint;
+}
