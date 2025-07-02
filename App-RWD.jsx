@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import Navigation from './Components/Navigation-RWD';
-import TimeTracker from './Components/TimeTracker-RWD';
-import ProjectManager from './Components/ProjectManager-RWD';
+import Navigation from './Components/Navigation-Modern';
+import TimeTracker from './Components/TimeTracker-Modern';
+import ProjectManager from './Components/ProjectManager-Modern';
 import Reports from './Components/Reports-RWD';
 import Invoice from './Components/Invoice-RWD';
 import Toast from './Components/Toast-RWD';
@@ -149,17 +149,34 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 safe-top safe-bottom">
-      
-      {/* 導航組件 */}
-      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
-      
-      {/* 主要內容區域 - 響應式容器 */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen">
-        <div className="max-w-6xl mx-auto">
-          {renderCurrentTab()}
-        </div>
-      </main>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative">
+      {/* 背景裝飾 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 opacity-50 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-gradient-to-tr from-cyan-100 to-blue-100 opacity-50 blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-gradient-to-r from-indigo-50 to-cyan-50 opacity-30 blur-3xl"></div>
+      </div>
+
+      {/* 主容器 */}
+      <div className="relative z-10 min-h-screen flex flex-col">
+        {/* 導航組件 */}
+        <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+        
+        {/* 主要內容區域 */}
+        <main className="flex-1 container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
+          <div className="max-w-7xl mx-auto">
+            {/* 內容容器 */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl shadow-gray-200/50 border border-white/20 overflow-hidden">
+              <div className="p-4 sm:p-6 lg:p-8">
+                {renderCurrentTab()}
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* 底部安全區域 */}
+        <div className="h-safe-bottom"></div>
+      </div>
 
       {/* Toast 通知 */}
       {showToast && (
@@ -171,10 +188,10 @@ const App = () => {
         />
       )}
 
-      {/* PWA 安裝提示 (移動端) */}
-      <div className="md:hidden fixed bottom-20 left-4 right-4 z-40">
-        {/* 可以在這裡添加 PWA 安裝提示 */}
-      </div>
+      {/* 狀態指示器 (移動端) */}
+      {isTracking && (
+        <div className="fixed top-safe bottom-safe left-0 w-1 bg-gradient-to-b from-green-400 to-emerald-500 z-30 md:hidden"></div>
+      )}
 
       {/* 無障礙輔助 */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
