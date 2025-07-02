@@ -10,53 +10,139 @@ export default {
     "./Constants/**/*.{js,jsx}"
   ],
   safelist: [
-    // 確保重要樣式類不被清除
+    // 確保重要的動態樣式類不被清除
     'shadow-lg',
     'shadow-xl', 
+    'shadow-2xl',
     'rounded-xl',
     'rounded-2xl',
     'bg-gradient-to-br',
+    'bg-gradient-to-r',
     'from-slate-50',
     'via-blue-50', 
     'to-indigo-100',
+    'from-blue-600',
+    'to-blue-700',
+    'from-green-500',
+    'to-green-600',
     'animate-pulse',
+    'animate-fade-in',
+    'animate-slide-up',
+    'animate-scale-in',
+    'animate-slide-down',
     'hover:shadow-xl',
     'transform',
-    'hover:scale-105'
+    'hover:scale-105',
+    'active:scale-95',
+    // 響應式工具類
+    'sm:block',
+    'sm:hidden',
+    'lg:block',
+    'lg:hidden',
+    'xl:block',
+    'xl:hidden',
+    // 觸控優化
+    'min-h-[44px]',
+    'min-h-[48px]',
+    'min-h-[56px]',
+    'touch-target',
+    'touch-friendly',
+    // 安全區域
+    'safe-top',
+    'safe-bottom',
+    'safe-left',
+    'safe-right'
   ],
   theme: {
+    // 自定義斷點 - Mobile First
+    screens: {
+      'xs': '475px',
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Monaco', 'monospace']
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Monaco', 'Consolas', 'monospace']
       },
       colors: {
         primary: {
           50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
           500: '#3b82f6',
           600: '#2563eb',
-          700: '#1d4ed8'
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a'
         },
         success: {
           50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
           500: '#22c55e',
-          600: '#16a34a'
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d'
         },
         warning: {
           50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
           500: '#f59e0b',
-          600: '#d97706'
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f'
         },
         error: {
           50: '#fef2f2',
+          100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
           500: '#ef4444',
-          600: '#dc2626'
+          600: '#dc2626',
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d'
+        },
+        gray: {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a'
         }
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '128': '32rem'
       },
       animation: {
         'slide-in': 'slideIn 0.3s ease-out',
-        'fade-in': 'fadeIn 0.2s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+        'slide-down': 'slideDown 0.2s ease-out',
+        'slide-up': 'slideUp 0.2s ease-out',
+        'fade-in': 'fadeIn 0.3s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'bounce-subtle': 'bounceSubtle 0.6s ease-in-out'
       },
       keyframes: {
         slideIn: {
@@ -69,13 +155,56 @@ export default {
             opacity: '1'
           }
         },
+        slideDown: {
+          'from': {
+            transform: 'translateY(-10px)',
+            opacity: '0'
+          },
+          'to': {
+            transform: 'translateY(0)',
+            opacity: '1'
+          }
+        },
+        slideUp: {
+          'from': {
+            transform: 'translateY(10px)',
+            opacity: '0'
+          },
+          'to': {
+            transform: 'translateY(0)',
+            opacity: '1'
+          }
+        },
         fadeIn: {
           'from': { opacity: '0' },
           'to': { opacity: '1' }
+        },
+        scaleIn: {
+          'from': { 
+            transform: 'scale(0.95)', 
+            opacity: '0' 
+          },
+          'to': { 
+            transform: 'scale(1)', 
+            opacity: '1' 
+          }
+        },
+        bounceSubtle: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-4px)' }
         }
       },
       boxShadow: {
         'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+        'soft-lg': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 30px -3px rgba(0, 0, 0, 0.05)',
+        'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.04)'
+      },
+      backdropBlur: {
+        'xs': '2px'
+      },
+      transitionProperty: {
+        'height': 'height',
+        'spacing': 'margin, padding'
       }
     },
   },

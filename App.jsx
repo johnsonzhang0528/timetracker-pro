@@ -30,10 +30,10 @@ const App = () => {
 
   // 專案管理狀態
   const [showNewProject, setShowNewProject] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', client: '', rate: '' });
+  const [newProject, setNewProject] = useState({ name: '', client: '', rate: '', color: '#3B82F6' });
   const [formErrors, setFormErrors] = useState({});
 
-  // 新增專案函數
+  // 新增專案函數 - 增強版
   const addProject = () => {
     const errors = {};
     
@@ -59,7 +59,7 @@ const App = () => {
       name: newProject.name.trim(),
       client: newProject.client.trim(),
       rate: parseInt(newProject.rate),
-      color: `#${Math.floor(Math.random()*16777215).toString(16)}`
+      color: newProject.color || '#3B82F6'
     };
     
     setProjects(prev => [...prev, project]);
@@ -70,12 +70,12 @@ const App = () => {
     }
     
     // 重置表單
-    setNewProject({ name: '', client: '', rate: '' });
+    setNewProject({ name: '', client: '', rate: '', color: '#3B82F6' });
     setFormErrors({});
     setShowNewProject(false);
   };
 
-  // 刪除專案函數
+  // 刪除專案函數 - 增強版
   const deleteProject = (projectId) => {
     if (window.confirm('確定要刪除此專案嗎？')) {
       const updatedProjects = projects.filter(p => p.id !== projectId);
@@ -149,14 +149,17 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 safe-top safe-bottom">
+      
       {/* 導航組件 */}
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      {/* 主要內容區域 */}
-      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
-        {renderCurrentTab()}
-      </div>
+      {/* 主要內容區域 - 響應式容器 */}
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen">
+        <div className="max-w-6xl mx-auto">
+          {renderCurrentTab()}
+        </div>
+      </main>
 
       {/* Toast 通知 */}
       {showToast && (
@@ -164,8 +167,19 @@ const App = () => {
           message={showToast.message}
           type={showToast.type}
           onClose={hideToast}
+          position="top-right"
         />
       )}
+
+      {/* PWA 安裝提示 (移動端) */}
+      <div className="md:hidden fixed bottom-20 left-4 right-4 z-40">
+        {/* 可以在這裡添加 PWA 安裝提示 */}
+      </div>
+
+      {/* 無障礙輔助 */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {isTracking ? '計時器正在運行' : '計時器已停止'}
+      </div>
     </div>
   );
 };
