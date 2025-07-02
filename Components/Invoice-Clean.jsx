@@ -193,121 +193,162 @@ const Invoice = () => {
 
       {/* 生成發票表單 */}
       {isCreating && (
-        <div className="card">
-          <div className="card-header">
+        <div className="form-container">
+          <div className="form-header">
             <h3>生成新發票</h3>
             <button 
-              className="btn btn-text"
+              className="btn btn-secondary btn-sm"
               onClick={() => setIsCreating(false)}
             >
-              取消
+              ✕ 關閉
             </button>
           </div>
 
           <div className="form-grid">
+            {/* 選擇專案 */}
             <div className="form-group">
-              <label>選擇專案</label>
+              <label>選擇專案 *</label>
               <select
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
+                className="form-select"
+                required
               >
                 <option value="">請選擇專案</option>
                 {projects.map(project => (
                   <option key={project.id} value={project.name}>
-                    {project.name} (${project.hourlyRate}/小時)
+                    {project.name} (NT${project.hourlyRate}/小時)
                   </option>
                 ))}
               </select>
             </div>
 
+            {/* 客戶名稱 */}
             <div className="form-group">
-              <label>開始日期</label>
-              <input
-                type="date"
-                value={selectedPeriod.start}
-                onChange={(e) => setSelectedPeriod({...selectedPeriod, start: e.target.value})}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>結束日期</label>
-              <input
-                type="date"
-                value={selectedPeriod.end}
-                onChange={(e) => setSelectedPeriod({...selectedPeriod, end: e.target.value})}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>客戶名稱</label>
+              <label>客戶名稱 *</label>
               <input
                 type="text"
                 value={invoiceData.clientName}
                 onChange={(e) => setInvoiceData({...invoiceData, clientName: e.target.value})}
                 placeholder="客戶公司/姓名"
+                className="form-input"
+                required
               />
             </div>
 
+            {/* 開始日期 */}
             <div className="form-group">
-              <label>客戶信箱</label>
+              <label>開始日期 *</label>
+              <input
+                type="date"
+                value={selectedPeriod.start}
+                onChange={(e) => setSelectedPeriod({...selectedPeriod, start: e.target.value})}
+                className="form-input"
+                required
+              />
+            </div>
+
+            {/* 結束日期 */}
+            <div className="form-group">
+              <label>結束日期 *</label>
+              <input
+                type="date"
+                value={selectedPeriod.end}
+                onChange={(e) => setSelectedPeriod({...selectedPeriod, end: e.target.value})}
+                className="form-input"
+                required
+              />
+            </div>
+
+            {/* 客戶電子郵件 */}
+            <div className="form-group">
+              <label>客戶電子郵件</label>
               <input
                 type="email"
                 value={invoiceData.clientEmail}
                 onChange={(e) => setInvoiceData({...invoiceData, clientEmail: e.target.value})}
                 placeholder="client@example.com"
+                className="form-input"
               />
             </div>
 
-            <div className="form-group full-width">
+            {/* 發票描述 */}
+            <div className="form-group">
               <label>發票描述</label>
               <input
                 type="text"
                 value={invoiceData.description}
                 onChange={(e) => setInvoiceData({...invoiceData, description: e.target.value})}
                 placeholder="專案開發服務費用"
+                className="form-input"
               />
             </div>
 
-            <div className="form-group full-width">
+            {/* 額外備註 */}
+            <div className="form-group form-group-full">
               <label>額外備註</label>
               <textarea
                 value={invoiceData.additionalNotes}
                 onChange={(e) => setInvoiceData({...invoiceData, additionalNotes: e.target.value})}
                 placeholder="付款條件、注意事項等..."
                 rows="3"
+                className="form-textarea"
               />
             </div>
-          </div>
 
-          {/* 預覽統計 */}
-          {selectedProject && selectedPeriod.start && selectedPeriod.end && (
-            <div className="invoice-preview">
-              <h4>發票預覽</h4>
-              <div className="preview-stats">
-                <div className="preview-stat">
-                  <span>工作時數:</span>
-                  <span>{formatHours(calculateInvoiceTotal().totalHours)}</span>
-                </div>
-                <div className="preview-stat">
-                  <span>時薪:</span>
-                  <span>${calculateInvoiceTotal().hourlyRate}</span>
-                </div>
-                <div className="preview-stat">
-                  <span>總金額:</span>
-                  <span className="total-amount">${calculateInvoiceTotal().totalAmount.toFixed(0)}</span>
+            {/* 預覽區域 */}
+            {selectedProject && selectedPeriod.start && selectedPeriod.end && (
+              <div className="form-group form-group-full">
+                <label>發票預覽</label>
+                <div className="invoice-preview">
+                  {(() => {
+                    const { totalHours, totalAmount, hourlyRate } = calculateInvoiceTotal();
+                    return (
+                      <div className="preview-content">
+                        <div className="preview-row">
+                          <span>專案：</span>
+                          <span>{selectedProject}</span>
+                        </div>
+                        <div className="preview-row">
+                          <span>期間：</span>
+                          <span>{selectedPeriod.start} 至 {selectedPeriod.end}</span>
+                        </div>
+                        <div className="preview-row">
+                          <span>總工時：</span>
+                          <span>{totalHours.toFixed(1)} 小時</span>
+                        </div>
+                        <div className="preview-row">
+                          <span>時薪：</span>
+                          <span>NT${hourlyRate}</span>
+                        </div>
+                        <div className="preview-row total">
+                          <span>總金額：</span>
+                          <span>NT${totalAmount.toFixed(0)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="form-actions">
-            <button 
-              className="btn btn-primary" 
-              onClick={generateInvoice}
-              disabled={!selectedProject || !selectedPeriod.start || !selectedPeriod.end}
-            >
-              生成發票
-            </button>
+            {/* 操作按鈕 */}
+            <div className="form-actions form-group-full">
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setIsCreating(false)}
+                type="button"
+              >
+                取消
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={generateInvoice}
+                type="button"
+              >
+                生成發票
+              </button>
+            </div>
           </div>
         </div>
       )}

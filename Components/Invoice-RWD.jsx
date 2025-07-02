@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FileText, Download, Mail, Calendar, Filter, User, Building } from 'lucide-react';
+import { FileText, Download, Mail, Calendar, Filter, User, Building, Eye, Send, CreditCard, BarChart3, CheckCircle, Clock } from 'lucide-react';
 import { 
   formatCurrency, 
   formatDate, 
@@ -96,11 +96,47 @@ const Invoice = ({ timeEntries }) => {
       {/* 頁面標題 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">發票生成</h2>
-          <p className="text-gray-600 text-responsive mt-1">
-            生成專業發票並發送給客戶
-          </p>
+          <div className="flex items-center space-x-3 mb-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+              發票生成
+            </h2>
+          </div>
+          <p className="text-gray-600 text-responsive ml-13">
+            生成專業發票並發送給客戶 • 簡單快速</p>
         </div>
+        
+        {invoiceEntries.length > 0 && (
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isGenerating}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              {isGenerating ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>生成中...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  <span>下載 PDF</span>
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={handleSendEmail}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-sm"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              <span>發送郵件</span>
+            </button>
+          </div>
+        )}
       </div>
       
       {invoiceEntries.length === 0 && timeEntries.length === 0 ? (
@@ -117,23 +153,28 @@ const Invoice = ({ timeEntries }) => {
       ) : (
         <>
           {/* 發票設定區域 */}
-          <div className="card spacing-responsive">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 sm:mb-6">
-              發票設定
-            </h3>
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+            <div className="flex items-center space-x-2 mb-6">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                <Filter className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">
+                發票設定
+              </h3>
+            </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               
               {/* 時間範圍 */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
+              <div className="bg-white/80 rounded-xl p-4 border border-white/60">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <Calendar className="w-4 h-4 inline mr-2 text-blue-600" />
                   計費期間
                 </label>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="input w-full"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 text-sm"
                 >
                   <option value="week">最近 7 天</option>
                   <option value="month">最近 30 天</option>
@@ -143,15 +184,15 @@ const Invoice = ({ timeEntries }) => {
               </div>
               
               {/* 專案篩選 */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Filter className="w-4 h-4 inline mr-1" />
+              <div className="bg-white/80 rounded-xl p-4 border border-white/60">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <BarChart3 className="w-4 h-4 inline mr-2 text-purple-600" />
                   專案篩選
                 </label>
                 <select
                   value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
-                  className="input w-full"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 text-sm"
                 >
                   <option value="all">所有專案</option>
                   {uniqueProjects.map(project => (
@@ -163,43 +204,85 @@ const Invoice = ({ timeEntries }) => {
               </div>
               
               {/* 發票號碼 */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <div className="bg-white/80 rounded-xl p-4 border border-white/60">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <FileText className="w-4 h-4 inline mr-2 text-green-600" />
                   發票號碼
                 </label>
                 <input
                   type="text"
                   value={invoiceNumber}
-                  className="input w-full bg-gray-50"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm font-mono"
                   readOnly
                 />
+              </div>
+              
+              {/* 發票狀態 */}
+              <div className="bg-white/80 rounded-xl p-4 border border-white/60">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <CheckCircle className="w-4 h-4 inline mr-2 text-emerald-600" />
+                  狀態
+                </label>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-green-700">準備就緒</span>
+                </div>
               </div>
             </div>
 
             {/* 自訂日期範圍 */}
             {selectedPeriod === 'custom' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-6 border-t border-blue-200">
+                <div className="bg-white/80 rounded-xl p-4 border border-white/60">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
                     開始日期
                   </label>
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 text-sm"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <div className="bg-white/80 rounded-xl p-4 border border-white/60">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
                     結束日期
                   </label>
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="input w-full"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 text-sm"
                   />
+                </div>
+              </div>
+            )}
+            
+            {/* 發票摘要統計 */}
+            {invoiceEntries.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-blue-200">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white/80 rounded-xl p-4 text-center border border-white/60">
+                    <div className="text-2xl font-bold text-blue-600">{invoiceEntries.length}</div>
+                    <div className="text-sm text-gray-600 flex items-center justify-center mt-1">
+                      <Clock className="w-3 h-3 mr-1" />
+                      工作記錄
+                    </div>
+                  </div>
+                  <div className="bg-white/80 rounded-xl p-4 text-center border border-white/60">
+                    <div className="text-2xl font-bold text-green-600">
+                      {Math.round(invoiceEntries.reduce((sum, entry) => sum + entry.duration, 0) / 3600)}h
+                    </div>
+                    <div className="text-sm text-gray-600">總時數</div>
+                  </div>
+                  <div className="bg-white/80 rounded-xl p-4 text-center border border-white/60">
+                    <div className="text-2xl font-bold text-purple-600">{formatCurrency(subtotal)}</div>
+                    <div className="text-sm text-gray-600">小計</div>
+                  </div>
+                  <div className="bg-white/80 rounded-xl p-4 text-center border border-white/60">
+                    <div className="text-2xl font-bold text-indigo-600">{formatCurrency(totalAmount)}</div>
+                    <div className="text-sm text-gray-600">總計</div>
+                  </div>
                 </div>
               </div>
             )}
@@ -227,36 +310,44 @@ const Invoice = ({ timeEntries }) => {
             </div>
           ) : (
             /* 發票預覽 */
-            <div className="card spacing-responsive">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
               
               {/* 發票標題區域 */}
-              <div className="border-b border-gray-200 pb-6 mb-6">
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200 p-6 sm:p-8">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start space-y-6 lg:space-y-0">
                   
                   {/* 發票資訊 */}
                   <div>
-                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">
-                      發票
-                    </h1>
-                    <div className="space-y-2 text-gray-600">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold">發票編號:</span>
-                        <span className="font-mono text-blue-600">{invoiceNumber}</span>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
+                        <FileText className="w-6 h-6 text-white" />
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold">開立日期:</span>
-                        <span>{currentDate}</span>
+                      <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-800 to-blue-600 bg-clip-text text-transparent">
+                        發票
+                      </h1>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-white/80 rounded-lg p-3 border border-blue-200">
+                        <div className="text-xs font-medium text-gray-500 mb-1">發票編號</div>
+                        <div className="font-mono text-sm font-bold text-blue-600">{invoiceNumber}</div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold">到期日:</span>
-                        <span>{formatDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000))}</span>
+                      <div className="bg-white/80 rounded-lg p-3 border border-green-200">
+                        <div className="text-xs font-medium text-gray-500 mb-1">開立日期</div>
+                        <div className="text-sm font-semibold text-gray-800">{currentDate}</div>
+                      </div>
+                      <div className="bg-white/80 rounded-lg p-3 border border-amber-200">
+                        <div className="text-xs font-medium text-gray-500 mb-1">到期日</div>
+                        <div className="text-sm font-semibold text-gray-800">
+                          {formatDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000))}
+                        </div>
                       </div>
                     </div>
                   </div>
                   
                   {/* 公司資訊 */}
-                  <div className="lg:text-right">
-                    <div className="flex items-start space-x-2 lg:justify-end mb-2">
+                  <div className="lg:text-right bg-white/80 rounded-xl p-4 border border-gray-200">
+                    <div className="flex items-start space-x-2 lg:justify-end mb-3">
                       <Building className="w-5 h-5 text-blue-600 mt-0.5" />
                       <div>
                         <h2 className="text-xl font-bold text-gray-800">
@@ -264,7 +355,7 @@ const Invoice = ({ timeEntries }) => {
                         </h2>
                       </div>
                     </div>
-                    <div className="text-gray-600 space-y-1">
+                    <div className="text-gray-600 space-y-1 text-sm">
                       <p>{COMPANY_INFO.address}</p>
                       <p>電話: {COMPANY_INFO.phone}</p>
                       <p>信箱: {COMPANY_INFO.email}</p>
@@ -273,48 +364,94 @@ const Invoice = ({ timeEntries }) => {
                 </div>
               </div>
 
-              {/* 客戶資訊 */}
-              <div className="mb-8">
-                <div className="flex items-start space-x-2 mb-3">
-                  <User className="w-5 h-5 text-green-600 mt-0.5" />
-                  <h3 className="text-lg font-bold text-gray-800">帳單寄送地址</h3>
+              <div className="p-6 sm:p-8">
+                {/* 客戶資訊 */}
+                <div className="mb-8">
+                  <div className="flex items-start space-x-2 mb-4">
+                    <User className="w-5 h-5 text-green-600 mt-0.5" />
+                    <h3 className="text-lg font-bold text-gray-800">帳單寄送地址</h3>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                    <p className="font-semibold text-gray-800">{CLIENT_INFO.name}</p>
+                    <p className="text-gray-600">{CLIENT_INFO.address}</p>
+                  </div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="font-semibold text-gray-800">{CLIENT_INFO.name}</p>
-                  <p className="text-gray-600">{CLIENT_INFO.address}</p>
-                </div>
-              </div>
 
-              {/* 發票項目 - 按專案分組 */}
-              <div className="mb-8">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">服務項目</h3>
-                
-                {/* 桌面版表格 */}
-                <div className="hidden lg:block overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-gray-300">
-                        <th className="text-left py-4 px-2 font-semibold text-gray-700">
-                          項目描述
-                        </th>
-                        <th className="text-center py-4 px-2 font-semibold text-gray-700">
-                          工作時數
-                        </th>
-                        <th className="text-right py-4 px-2 font-semibold text-gray-700">
-                          時薪
-                        </th>
-                        <th className="text-right py-4 px-2 font-semibold text-gray-700">
-                          小計
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(groupedByProject).map(([projectName, projectData]) => (
-                        <tr key={projectName} className="border-b border-gray-200">
-                          <td className="py-4 px-2">
-                            <div className="font-semibold text-gray-800">
-                              {projectName}
+                {/* 發票項目 - 重新設計 */}
+                <div className="mb-8">
+                  <div className="flex items-center space-x-2 mb-6">
+                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                    <h3 className="text-lg font-bold text-gray-800">服務項目詳細</h3>
+                  </div>
+                  
+                  {/* 項目卡片式設計 */}
+                  <div className="space-y-4">
+                    {Object.entries(groupedByProject).map(([projectName, projectData]) => (
+                      <div key={projectName} className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                          
+                          {/* 專案資訊 */}
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              <h4 className="text-lg font-bold text-gray-800">{projectName}</h4>
                             </div>
+                            <div className="flex items-center space-x-2 text-gray-600 mb-2">
+                              <User className="w-4 h-4" />
+                              <span className="text-sm">{projectData.client}</span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {projectData.entries.length} 筆工作記錄
+                            </div>
+                          </div>
+                          
+                          {/* 統計數據 */}
+                          <div className="grid grid-cols-3 gap-4 lg:gap-6">
+                            <div className="text-center bg-white/80 rounded-lg p-3 border border-white/60">
+                              <div className="text-lg font-bold text-blue-600">
+                                {projectData.totalHours.toFixed(1)}h
+                              </div>
+                              <div className="text-xs text-gray-500">工作時數</div>
+                            </div>
+                            <div className="text-center bg-white/80 rounded-lg p-3 border border-white/60">
+                              <div className="text-lg font-bold text-green-600">
+                                {formatCurrency(projectData.entries[0]?.rate || 0)}
+                              </div>
+                              <div className="text-xs text-gray-500">時薪</div>
+                            </div>
+                            <div className="text-center bg-white/80 rounded-lg p-3 border border-white/60">
+                              <div className="text-lg font-bold text-purple-600">
+                                {formatCurrency(projectData.totalAmount)}
+                              </div>
+                              <div className="text-xs text-gray-500">小計</div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* 工作記錄明細 */}
+                        <div className="mt-4 pt-4 border-t border-white/60">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {projectData.entries.slice(0, 6).map((entry, index) => (
+                              <div key={index} className="bg-white/60 rounded-lg p-3 text-sm">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-gray-600">{formatDate(entry.date)}</span>
+                                  <span className="font-semibold text-gray-800">
+                                    {(entry.duration / 3600).toFixed(1)}h
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                            {projectData.entries.length > 6 && (
+                              <div className="bg-white/60 rounded-lg p-3 text-sm text-center text-gray-500">
+                                +{projectData.entries.length - 6} 更多...
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                             <div className="text-sm text-gray-600">
                               {projectData.client} • {projectData.entries.length} 次工作
                             </div>
