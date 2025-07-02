@@ -4,10 +4,22 @@ import TimeTracker from './Components/TimeTracker';
 import ProjectManager from './Components/ProjectManager';
 import Reports from './Components/Reports';
 import Invoice from './Components/Invoice';
+import Auth from './Components/Auth';
+import UserProfile from './Components/UserProfile';
 import { useTimeTracker, useLocalStorage } from './Hooks/useTimeTracker';
+import { useAuthContext } from './Hooks/useAuth';
 import { TABS } from './Constants';
 
 const App = () => {
+  const { isAuthenticated, isLoading: authLoading, user } = useAuthContext();
+  
+  // 調試信息
+  console.log('🏠 App 組件渲染 - 認證狀態:', {
+    isAuthenticated,
+    authLoading,
+    user: user ? user.name : 'null'
+  });
+  
   // 使用自定義 Hooks
   const {
     isTracking,
@@ -94,6 +106,28 @@ const App = () => {
   // 啟用本地儲存
   useLocalStorage(projects, timeEntries, currentTime, isTracking, selectedProject);
 
+  // 認證載入中顯示
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">載入中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 未登入時顯示認證頁面
+  if (!isAuthenticated) {
+    console.log('🚪 顯示認證頁面，isAuthenticated =', isAuthenticated);
+    return <Auth onAuthSuccess={() => {
+      console.log('🎯 onAuthSuccess 回調被調用');
+      console.log('🔄 設置 activeTab 為 TRACKER');
+      setActiveTab(TABS.TRACKER);
+    }} />;
+  }
+
   // 渲染當前頁面內容
   const renderCurrentTab = () => {
     switch (activeTab) {
@@ -132,6 +166,9 @@ const App = () => {
       
       case TABS.INVOICE:
         return <Invoice timeEntries={timeEntries} projects={projects} />;
+      
+      case TABS.PROFILE:
+        return <UserProfile />;
       
       default:
         return (

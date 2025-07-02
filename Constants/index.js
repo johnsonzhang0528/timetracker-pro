@@ -41,7 +41,8 @@ export const TABS = {
   TRACKER: 'tracker',
   PROJECTS: 'projects',
   REPORTS: 'reports',
-  INVOICE: 'invoice'
+  INVOICE: 'invoice',
+  PROFILE: 'profile'  // 新增用戶設定頁籤
 };
 
 // 營業稅率
@@ -92,4 +93,48 @@ export const BREAKPOINTS = {
   MD: '768px',
   LG: '1024px',
   XL: '1280px'
+};
+
+// 用戶系統相關常數
+export const USER_PLANS = {
+  FREE: 'free',
+  PRO: 'pro',
+  BUSINESS: 'business'
+};
+
+export const PLAN_LIMITS = {
+  [USER_PLANS.FREE]: {
+    maxProjects: 1,
+    maxClients: 3,
+    reportDays: 7,
+    cloudSync: false,
+    advancedReports: false,
+    invoiceExport: false
+  },
+  [USER_PLANS.PRO]: {
+    maxProjects: -1, // 無限制
+    maxClients: -1,
+    reportDays: -1,
+    cloudSync: true,
+    advancedReports: true,
+    invoiceExport: true
+  },
+  [USER_PLANS.BUSINESS]: {
+    maxProjects: -1,
+    maxClients: -1,
+    reportDays: -1,
+    cloudSync: true,
+    advancedReports: true,
+    invoiceExport: true,
+    teamCollaboration: true,
+    apiAccess: true
+  }
+};
+
+// 認證相關常數
+export const AUTH_CONFIG = {
+  TOKEN_EXPIRY: 24 * 60 * 60 * 1000, // 24小時
+  REFRESH_TOKEN_EXPIRY: 7 * 24 * 60 * 60 * 1000, // 7天
+  PASSWORD_MIN_LENGTH: 6,
+  MAX_LOGIN_ATTEMPTS: 5
 };
