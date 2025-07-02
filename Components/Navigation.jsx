@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Users, BarChart3, FileText, Menu, X, Zap, User, ChevronDown } from 'lucide-react';
+import { Clock, Users, BarChart3, FileText, Menu, X, User, ChevronDown, Settings, LogOut } from 'lucide-react';
 import { APP_TITLE, TABS } from '../Constants';
 import { useAuthContext } from '../Hooks/useAuth';
 
@@ -58,20 +58,332 @@ const Navigation = ({ activeTab, setActiveTab, isTracking }) => {
   };
 
   return (
-    <>
-      {/* 主導航 */}
-      <header className="header">
-        <nav className="nav">
-          {/* Logo */}
-          <div className="logo">
-            <div className="logo-icon">
-              <Zap size={24} />
-            </div>
-            <h1 className="logo-text">{APP_TITLE}</h1>
+    <header style={{
+      background: '#ffffff',
+      borderBottom: '1px solid #e5e7eb',
+      position: 'sticky',
+      top: '0',
+      zIndex: '50',
+      padding: '0 24px'
+    }}>
+      <nav style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: '64px',
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        
+        {/* Logo */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            background: '#3b82f6',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white'
+          }}>
+            <Clock size={18} />
           </div>
+          <h1 style={{ 
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#1f2937',
+            margin: '0'
+          }}>
+            {APP_TITLE}
+          </h1>
+        </div>
+          
+        {/* 桌面導航 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }} className="desktop-nav">
+          {navItems.map(item => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
             
-          {/* 桌面導航 */}
-          <div className="nav-desktop">
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabClick(item.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isActive ? '#f3f4f6' : 'transparent',
+                  color: isActive ? '#1f2937' : '#6b7280',
+                  fontSize: '14px',
+                  fontWeight: isActive ? '500' : '400',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                title={item.description}
+                onMouseEnter={(e) => !isActive && (e.target.style.background = '#f9fafb')}
+                onMouseLeave={(e) => !isActive && (e.target.style.background = 'transparent')}
+              >
+                <Icon size={16} />
+                <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>
+                {/* 計時指示器 */}
+                {item.id === TABS.TRACKER && isTracking && (
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    background: '#22c55e',
+                    borderRadius: '50%',
+                    marginLeft: '4px',
+                    animation: 'pulse 2s infinite'
+                  }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 用戶資訊和選單 */}
+        <div style={{ position: 'relative' }} className="user-menu">
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+              background: '#ffffff',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => (e.target.style.background = '#f9fafb')}
+            onMouseLeave={(e) => (e.target.style.background = '#ffffff')}
+          >
+            <div style={{
+              width: '32px',
+              height: '32px',
+              background: '#3b82f6',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} className="user-info">
+              <span style={{ 
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#1f2937',
+                lineHeight: '1'
+              }}>
+                {user?.name || '用戶'}
+              </span>
+              <span style={{ 
+                fontSize: '12px',
+                color: '#6b7280',
+                lineHeight: '1'
+              }}>
+                {user?.plan === 'free' ? '免費版' : 'Pro 版'}
+              </span>
+            </div>
+            <ChevronDown 
+              size={16} 
+              style={{
+                color: '#9ca3af',
+                transition: 'transform 0.2s',
+                transform: isUserMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}
+            />
+          </button>
+
+          {/* 用戶下拉選單 */}
+          {isUserMenuOpen && (
+            <div style={{
+              position: 'absolute',
+              right: '0',
+              top: 'calc(100% + 8px)',
+              width: '280px',
+              background: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              zIndex: '50',
+              overflow: 'hidden'
+            }}>
+              
+              {/* 用戶資訊標題 */}
+              <div style={{
+                background: '#f9fafb',
+                padding: '16px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    background: '#3b82f6',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '18px',
+                    fontWeight: '600'
+                  }}>
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <div style={{ flex: '1' }}>
+                    <p style={{ 
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#1f2937',
+                      margin: '0 0 4px 0'
+                    }}>
+                      {user?.name || '演示用戶'}
+                    </p>
+                    <p style={{ 
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      margin: '0 0 8px 0'
+                    }}>
+                      {user?.email || 'demo@timetracker.pro'}
+                    </p>
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      background: user?.plan === 'free' ? '#f3f4f6' : '#dbeafe',
+                      color: user?.plan === 'free' ? '#374151' : '#1d4ed8'
+                    }}>
+                      {user?.plan === 'free' ? '免費版用戶' : 'Pro 版用戶'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 選單項目 */}
+              <div style={{ padding: '8px' }}>
+                <button
+                  onClick={() => {
+                    handleTabClick(TABS.PROFILE);
+                    setIsUserMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#374151',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => (e.target.style.background = '#f3f4f6')}
+                  onMouseLeave={(e) => (e.target.style.background = 'transparent')}
+                >
+                  <Settings size={16} />
+                  <div>
+                    <div style={{ fontWeight: '500' }}>帳戶設定</div>
+                    <div style={{ fontSize: '12px', color: '#6b7280' }}>管理個人資料和偏好</div>
+                  </div>
+                </button>
+                
+                <div style={{
+                  height: '1px',
+                  background: '#e5e7eb',
+                  margin: '8px 16px'
+                }} />
+                
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsUserMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#dc2626',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => (e.target.style.background = '#fef2f2')}
+                  onMouseLeave={(e) => (e.target.style.background = 'transparent')}
+                >
+                  <LogOut size={16} />
+                  <div>
+                    <div style={{ fontWeight: '500' }}>登出</div>
+                    <div style={{ fontSize: '12px', color: '#b91c1c' }}>結束當前會話</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 手機選單按鈕 */}
+        <button
+          onClick={toggleMobileMenu}
+          style={{
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '8px',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb',
+            background: '#ffffff',
+            color: '#6b7280',
+            cursor: 'pointer'
+          }}
+          className="mobile-menu-btn"
+        >
+          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </nav>
+
+      {/* 手機導航選單 */}
+      {isMobileMenuOpen && (
+        <div style={{
+          background: '#ffffff',
+          borderTop: '1px solid #e5e7eb',
+          padding: '16px 0'
+        }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -80,211 +392,74 @@ const Navigation = ({ activeTab, setActiveTab, isTracking }) => {
                 <button
                   key={item.id}
                   onClick={() => handleTabClick(item.id)}
-                  className={`nav-item ${isActive ? 'active' : ''}`}
-                  title={item.description}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: isActive ? '#f3f4f6' : 'transparent',
+                    color: isActive ? '#1f2937' : '#6b7280',
+                    fontSize: '14px',
+                    fontWeight: isActive ? '500' : '400',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    marginBottom: '4px',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => !isActive && (e.target.style.background = '#f9fafb')}
+                  onMouseLeave={(e) => !isActive && (e.target.style.background = 'transparent')}
                 >
-                  <Icon size={18} />
+                  <Icon size={16} />
                   <span>{item.label}</span>
-                  {/* 計時指示器 */}
                   {item.id === TABS.TRACKER && isTracking && (
-                    <div 
-                      className="pulse"
-                      style={{
-                        width: '6px',
-                        height: '6px',
-                        backgroundColor: '#10b981',
-                        borderRadius: '50%',
-                        marginLeft: '4px'
-                      }}
-                    />
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      background: '#22c55e',
+                      borderRadius: '50%',
+                      marginLeft: 'auto'
+                    }} />
                   )}
                 </button>
               );
             })}
           </div>
+        </div>
+      )}
 
-          {/* 用戶資訊和選單 */}
-          <div className="relative">
-            <button
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
-              <span className="hidden md:block text-sm font-medium">
-                {user?.name || '用戶'}
-              </span>
-              <ChevronDown size={16} className={`transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
+      {/* 背景遮罩 */}
+      {(isMobileMenuOpen || isUserMenuOpen) && (
+        <div
+          onClick={() => {
+            setIsMobileMenuOpen(false);
+            setIsUserMenuOpen(false);
+          }}
+          style={{
+            position: 'fixed',
+            inset: '0',
+            background: 'rgba(0, 0, 0, 0.1)',
+            zIndex: '40'
+          }}
+        />
+      )}
 
-            {/* 用戶下拉選單 */}
-            {isUserMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
-                  <p className="font-medium text-gray-800">{user?.name}</p>
-                  <p className="text-sm text-gray-500">{user?.email}</p>
-                  <div className="mt-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {user?.plan === 'free' ? '免費版' : 'Pro 版'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="p-2">
-                  <button
-                    onClick={() => {
-                      handleTabClick(TABS.PROFILE);
-                      setIsUserMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-left"
-                  >
-                    <User size={16} />
-                    帳戶設定
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      handleLogout();
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
-                  >
-                    <X size={16} />
-                    登出
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 手機菜單按鈕 */}
-          <button
-            onClick={toggleMobileMenu}
-            className="menu-toggle desktop-hidden"
-            aria-label="開啟選單"
-          >
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </nav>
-
-        {/* 手機下拉選單 */}
-        {isMobileMenuOpen && (
-          <div className="desktop-hidden fade-in" style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
-            borderBottom: '1px solid var(--gray-200)',
-            zIndex: 40
-          }}>
-            <div style={{ padding: 'var(--space-4)' }}>
-              {navItems.map(item => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleTabClick(item.id)}
-                    className={`nav-item ${isActive ? 'active' : ''}`}
-                    style={{
-                      width: '100%',
-                      justifyContent: 'flex-start',
-                      marginBottom: 'var(--space-2)'
-                    }}
-                  >
-                    <Icon size={18} />
-                    <div style={{ textAlign: 'left', flex: 1 }}>
-                      <div style={{ fontWeight: '500' }}>{item.label}</div>
-                      <div style={{ 
-                        fontSize: '0.75rem', 
-                        color: 'var(--gray-500)', 
-                        marginTop: '2px' 
-                      }}>
-                        {item.description}
-                      </div>
-                    </div>
-                    {/* 手機版計時指示器 */}
-                    {item.id === TABS.TRACKER && isTracking && (
-                      <div 
-                        className="pulse"
-                        style={{
-                          position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                          width: '6px',
-                          height: '6px',
-                          backgroundColor: '#10b981',
-                          borderRadius: '50%'
-                        }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-              
-              {/* 手機版用戶選單 */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => handleTabClick(TABS.PROFILE)}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-left mb-2"
-                >
-                  <User size={16} />
-                  帳戶設定
-                </button>
-                
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
-                >
-                  <X size={16} />
-                  登出
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* 手機底部導航 */}
-      <nav className="nav-mobile desktop-hidden">
-        {navItems.map(item => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleTabClick(item.id)}
-              className={`nav-mobile-item ${isActive ? 'active' : ''}`}
-            >
-              <div className="nav-mobile-icon">
-                <Icon size={20} />
-                {/* 手機底部計時指示器 */}
-                {item.id === TABS.TRACKER && isTracking && (
-                  <div 
-                    className="pulse"
-                    style={{
-                      position: 'absolute',
-                      top: '-2px',
-                      right: '-2px',
-                      width: '6px',
-                      height: '6px',
-                      backgroundColor: '#10b981',
-                      borderRadius: '50%'
-                    }}
-                  />
-                )}
-              </div>
-              <span>{item.shortLabel}</span>
-            </button>
-          );
-        })}
-      </nav>
-    </>
+      {/* CSS 樣式 */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
+        @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .user-menu .user-info { display: none !important; }
+          .mobile-menu-btn { display: flex !important; }
+        }
+      `}</style>
+    </header>
   );
 };
 
