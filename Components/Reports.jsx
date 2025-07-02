@@ -1,95 +1,305 @@
-import React from 'react';
-import { DollarSign, Clock, BarChart3 } from 'lucide-react';
-import { formatTime, formatCurrency, calculateTotalEarnings, calculateTotalHours } from '../Utils/helpers';
+import React, { useState, useEffect, useMemo } from 'react';
 
-const Reports = ({ timeEntries }) => {
-  const totalEarnings = calculateTotalEarnings(timeEntries);
-  const totalHours = calculateTotalHours(timeEntries);
-  const averageHourlyRate = totalHours > 0 ? Math.round(totalEarnings / totalHours) : 0;
+const Reports = () => {
+  const [timeEntries, setTimeEntries] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [selectedProject, setSelectedProject] = useState('all');
+  const [chartType, setChartType] = useState('daily');
+
+  useEffect(() => {
+    // 載入時間記錄
+    const savedEntries = localStorage.getItem('timetracker-entries');
+    if (savedEntries) {
+      setTimeEntries(JSON.parse(savedEntries));
+    }
+
+    // 載入專案
+    const savedProjects = localStorage.getItem('timetracker-projects');
+    if (savedProjects) {
+      setProjects(JSON.parse(savedProjects));
+    }
+  }, []);
+
+  // 根據選擇的時間範圍過濾資料
+  const filteredEntries = useMemo(() => {
+    const now = new Date();
+    let startDate;
+
+    switch (selectedPeriod) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      default:
+        startDate = new Date(0);
+    }
+
+    return timeEntries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      const matchesPeriod = entryDate >= startDate;
+      const matchesProject = selectedProject === 'all' || entry.project === selectedProject;
+      return matchesPeriod && matchesProject;
+    });
+  }, [timeEntries, selectedPeriod, selectedProject]);
+
+  // 計算統計資料
+  const stats = useMemo(() => {
+    const totalHours = filteredEntries.reduce((sum, entry) => sum + entry.duration, 0);
+    const totalEarnings = filteredEntries.reduce((sum, entry) => {
+      const project = projects.find(p => p.name === entry.project);
+      return sum + (entry.duration * (project?.hourlyRate || 0));
+    }, 0);
+
+    const projectStats = filteredEntries.reduce((acc, entry) => {
+      if (!acc[entry.project]) {
+        acc[entry.project] = { hours: 0, earnings: 0 };
+      }
+      acc[entry.project].hours += entry.duration;
+      
+      const project = projects.find(p => p.name === entry.project);
+      acc[entry.project].earnings += entry.duration * (project?.hourlyRate || 0);
+      
+      return acc;
+    }, {});
+
+    return {
+      totalHours,
+      totalEarnings,
+      averageHoursPerDay: totalHours / Math.max(1, getDaysInPeriod()),
+      projectStats
+    };
+  }, [filteredEntries, projects, selectedPeriod]);
+
+  const getDaysInPeriod = () => {
+    switch (selectedPeriod) {
+      case 'today': return 1;
+      case 'week': return 7;
+      case 'month': return 30;
+      case 'year': return 365;
+      default: return 1;
+    }
+  };
+
+  // 準備圖表資料
+  const chartData = useMemo(() => {
+    if (chartType === 'daily') {
+      const dailyData = {};
+      filteredEntries.forEach(entry => {
+        const date = entry.date.split('T')[0];
+        if (!dailyData[date]) {
+          dailyData[date] = 0;
+        }
+        dailyData[date] += entry.duration;
+      });
+
+      return Object.entries(dailyData)
+        .sort(([a], [b]) => new Date(a) - new Date(b))
+        .map(([date, hours]) => ({ date, hours }));
+    } else {
+      return Object.entries(stats.projectStats)
+        .map(([project, data]) => ({ project, ...data }))
+        .sort((a, b) => b.hours - a.hours);
+    }
+  }, [filteredEntries, chartType, stats.projectStats]);
+
+  const formatHours = (hours) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h}h ${m}m`;
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('zh-TW', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <h2 className="text-xl sm:text-2xl font-bold">報表分析</h2>
-      
-      {timeEntries.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold mb-2">還沒有數據</h3>
-          <p className="text-gray-600">開始計時工作來查看您的收入統計</p>
+    <div className="page-container">
+      <div className="page-header">
+        <h1>工作報告</h1>
+        <div className="filter-controls">
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+          >
+            <option value="today">今天</option>
+            <option value="week">本週</option>
+            <option value="month">本月</option>
+            <option value="year">今年</option>
+          </select>
+          <select
+            value={selectedProject}
+            onChange={(e) => setSelectedProject(e.target.value)}
+          >
+            <option value="all">所有專案</option>
+            {projects.map(project => (
+              <option key={project.id} value={project.name}>
+                {project.name}
+              </option>
+            ))}
+          </select>
         </div>
-      ) : (
-        <>
-          {/* 統計卡片 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* 總收入 */}
-            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600">總收入</p>
-                  <p className="text-xl sm:text-2xl font-bold text-green-600">
-                    {formatCurrency(totalEarnings)}
-                  </p>
-                </div>
-                <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
-              </div>
-            </div>
-            
-            {/* 總工作時數 */}
-            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600">總工作時數</p>
-                  <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                    {totalHours.toFixed(1)} 小時
-                  </p>
-                </div>
-                <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
-              </div>
-            </div>
-            
-            {/* 平均時薪 */}
-            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600">平均時薪</p>
-                  <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                    {formatCurrency(averageHourlyRate)}
-                  </p>
-                </div>
-                <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
-              </div>
-            </div>
-          </div>
+      </div>
 
-          {/* 工作記錄列表 */}
-          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-bold mb-4">工作記錄</h3>
-            <div className="space-y-3">
-              {timeEntries.map(entry => (
-                <div 
-                  key={entry.id} 
-                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 border border-gray-200 rounded-lg space-y-2 sm:space-y-0"
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold text-sm sm:text-base">{entry.project}</div>
-                    <div className="text-xs sm:text-sm text-gray-600">
-                      {entry.client} • {entry.date}
-                    </div>
-                  </div>
-                  <div className="flex justify-between sm:block sm:text-right">
-                    <div className="font-bold text-green-600 text-sm sm:text-base">
-                      {formatCurrency(entry.amount)}
-                    </div>
-                    <div className="text-xs sm:text-sm text-gray-600">
-                      {formatTime(entry.duration)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* 統計卡片 */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">{formatHours(stats.totalHours)}</div>
+          <div className="stat-label">總工作時間</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">${stats.totalEarnings.toFixed(0)}</div>
+          <div className="stat-label">總收益</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{formatHours(stats.averageHoursPerDay)}</div>
+          <div className="stat-label">日均工作時間</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{Object.keys(stats.projectStats).length}</div>
+          <div className="stat-label">專案數量</div>
+        </div>
+      </div>
+
+      {/* 圖表區域 */}
+      <div className="card">
+        <div className="card-header">
+          <h3>數據視覺化</h3>
+          <div className="chart-controls">
+            <button
+              className={`btn ${chartType === 'daily' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setChartType('daily')}
+            >
+              每日趨勢
+            </button>
+            <button
+              className={`btn ${chartType === 'project' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setChartType('project')}
+            >
+              專案分布
+            </button>
           </div>
-        </>
-      )}
+        </div>
+
+        <div className="chart-container">
+          {chartData.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">📊</div>
+              <h3>沒有數據</h3>
+              <p>選擇的時間範圍內沒有工作記錄</p>
+            </div>
+          ) : (
+            <div className="simple-chart">
+              {chartType === 'daily' ? (
+                // 簡單的日期條形圖
+                <div className="daily-chart">
+                  {chartData.map(({ date, hours }) => {
+                    const maxHours = Math.max(...chartData.map(d => d.hours));
+                    const height = (hours / maxHours) * 100;
+                    
+                    return (
+                      <div key={date} className="chart-bar-container">
+                        <div 
+                          className="chart-bar"
+                          style={{ height: `${height}%` }}
+                          title={`${formatDate(date)}: ${formatHours(hours)}`}
+                        />
+                        <div className="chart-label">
+                          {formatDate(date)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                // 專案分布圖
+                <div className="project-chart">
+                  {chartData.map(({ project, hours, earnings }) => {
+                    const maxHours = Math.max(...chartData.map(d => d.hours));
+                    const width = (hours / maxHours) * 100;
+                    
+                    return (
+                      <div key={project} className="project-bar">
+                        <div className="project-info">
+                          <span className="project-name">{project}</span>
+                          <span className="project-hours">{formatHours(hours)}</span>
+                        </div>
+                        <div className="project-bar-container">
+                          <div 
+                            className="project-bar-fill"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="project-earnings">
+                          ${earnings.toFixed(0)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 詳細記錄表格 */}
+      <div className="card">
+        <div className="card-header">
+          <h3>詳細記錄</h3>
+        </div>
+        
+        {filteredEntries.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">📝</div>
+            <h3>沒有記錄</h3>
+            <p>選擇的時間範圍內沒有工作記錄</p>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>專案</th>
+                  <th>任務</th>
+                  <th>時間</th>
+                  <th>收益</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEntries
+                  .sort((a, b) => new Date(b.date) - new Date(a.date))
+                  .map((entry, index) => {
+                    const project = projects.find(p => p.name === entry.project);
+                    const earnings = entry.duration * (project?.hourlyRate || 0);
+                    
+                    return (
+                      <tr key={index}>
+                        <td>{formatDate(entry.date)}</td>
+                        <td>{entry.project}</td>
+                        <td>{entry.task || '-'}</td>
+                        <td>{formatHours(entry.duration)}</td>
+                        <td>${earnings.toFixed(0)}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

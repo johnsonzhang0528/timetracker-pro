@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App-Clean.jsx'
-import './styles-clean.css'
+import App from './App.jsx'
+import './styles.css'
 
 // 錯誤邊界組件
 class ErrorBoundary extends React.Component {

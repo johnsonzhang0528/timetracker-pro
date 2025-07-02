@@ -1,151 +1,427 @@
-import React from 'react';
-import { FileText } from 'lucide-react';
-import { 
-  formatCurrency, 
-  formatDate, 
-  generateInvoiceNumber, 
-  calculateTotalEarnings 
-} from '../Utils/helpers';
-import { TAX_RATE, COMPANY_INFO, CLIENT_INFO, PAYMENT_TERMS } from '../Constants';
+import React, { useState, useEffect } from 'react';
 
-const Invoice = ({ timeEntries }) => {
-  const totalEarnings = calculateTotalEarnings(timeEntries);
-  const taxAmount = Math.round(totalEarnings * TAX_RATE);
-  const finalTotal = totalEarnings + taxAmount;
-  const invoiceNumber = generateInvoiceNumber();
-  const currentDate = formatDate(new Date());
+const Invoice = () => {
+  const [invoices, setInvoices] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [timeEntries, setTimeEntries] = useState([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedPeriod, setSelectedPeriod] = useState({
+    start: '',
+    end: ''
+  });
+  const [invoiceData, setInvoiceData] = useState({
+    clientName: '',
+    clientEmail: '',
+    description: '',
+    additionalNotes: ''
+  });
+
+  useEffect(() => {
+    // 載入發票記錄
+    const savedInvoices = localStorage.getItem('timetracker-invoices');
+    if (savedInvoices) {
+      setInvoices(JSON.parse(savedInvoices));
+    }
+
+    // 載入專案
+    const savedProjects = localStorage.getItem('timetracker-projects');
+    if (savedProjects) {
+      setProjects(JSON.parse(savedProjects));
+    }
+
+    // 載入時間記錄
+    const savedEntries = localStorage.getItem('timetracker-entries');
+    if (savedEntries) {
+      setTimeEntries(JSON.parse(savedEntries));
+    }
+  }, []);
+
+  // 儲存發票
+  const saveInvoices = (updatedInvoices) => {
+    localStorage.setItem('timetracker-invoices', JSON.stringify(updatedInvoices));
+    setInvoices(updatedInvoices);
+  };
+
+  // 獲取指定期間的工作記錄
+  const getEntriesForPeriod = () => {
+    if (!selectedProject || !selectedPeriod.start || !selectedPeriod.end) {
+      return [];
+    }
+
+    const startDate = new Date(selectedPeriod.start);
+    const endDate = new Date(selectedPeriod.end);
+    endDate.setHours(23, 59, 59); // 包含結束日期的整天
+
+    return timeEntries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entry.project === selectedProject && 
+             entryDate >= startDate && 
+             entryDate <= endDate;
+    });
+  };
+
+  // 計算發票總額
+  const calculateInvoiceTotal = () => {
+    const entries = getEntriesForPeriod();
+    const project = projects.find(p => p.name === selectedProject);
+    const hourlyRate = project?.hourlyRate || 0;
+    
+    const totalHours = entries.reduce((sum, entry) => sum + entry.duration, 0);
+    return {
+      totalHours,
+      totalAmount: totalHours * hourlyRate,
+      hourlyRate,
+      entries
+    };
+  };
+
+  // 生成發票
+  const generateInvoice = () => {
+    const { totalHours, totalAmount, hourlyRate, entries } = calculateInvoiceTotal();
+    
+    if (entries.length === 0) {
+      alert('選擇的期間內沒有工作記錄');
+      return;
+    }
+
+    const invoice = {
+      id: Date.now(),
+      invoiceNumber: `INV-${Date.now()}`,
+      projectName: selectedProject,
+      clientName: invoiceData.clientName,
+      clientEmail: invoiceData.clientEmail,
+      description: invoiceData.description,
+      additionalNotes: invoiceData.additionalNotes,
+      period: selectedPeriod,
+      totalHours,
+      hourlyRate,
+      totalAmount,
+      entries: [...entries],
+      createdAt: new Date().toISOString(),
+      status: 'draft'
+    };
+
+    const updatedInvoices = [invoice, ...invoices];
+    saveInvoices(updatedInvoices);
+
+    // 重置表單
+    setIsCreating(false);
+    setSelectedProject('');
+    setSelectedPeriod({ start: '', end: '' });
+    setInvoiceData({
+      clientName: '',
+      clientEmail: '',
+      description: '',
+      additionalNotes: ''
+    });
+  };
+
+  // 更新發票狀態
+  const updateInvoiceStatus = (invoiceId, newStatus) => {
+    const updatedInvoices = invoices.map(invoice =>
+      invoice.id === invoiceId ? { ...invoice, status: newStatus } : invoice
+    );
+    saveInvoices(updatedInvoices);
+  };
+
+  // 刪除發票
+  const deleteInvoice = (invoiceId) => {
+    if (confirm('確定要刪除這張發票嗎？')) {
+      const updatedInvoices = invoices.filter(invoice => invoice.id !== invoiceId);
+      saveInvoices(updatedInvoices);
+    }
+  };
+
+  const formatHours = (hours) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h}h ${m}m`;
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('zh-TW');
+  };
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      draft: { text: '草稿', class: 'status-draft' },
+      sent: { text: '已發送', class: 'status-sent' },
+      paid: { text: '已付款', class: 'status-paid' },
+      overdue: { text: '逾期', class: 'status-overdue' }
+    };
+    return statusMap[status] || statusMap.draft;
+  };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <h2 className="text-xl sm:text-2xl font-bold">發票生成</h2>
-      
-      {timeEntries.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold mb-2">無法生成發票</h3>
-          <p className="text-gray-600">需要有工作記錄才能生成發票</p>
+    <div className="page-container">
+      <div className="page-header">
+        <h1>發票管理</h1>
+        <button 
+          className="btn btn-primary"
+          onClick={() => setIsCreating(true)}
+        >
+          + 生成發票
+        </button>
+      </div>
+
+      {/* 統計卡片 */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">{invoices.length}</div>
+          <div className="stat-label">總發票數</div>
         </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
-          {/* 發票標題區域 */}
-          <div className="border-b pb-4 sm:pb-6 mb-4 sm:mb-6">
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start space-y-4 lg:space-y-0">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">發票</h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-2">
-                  發票編號: {invoiceNumber}
-                </p>
-                <p className="text-sm sm:text-base text-gray-600">
-                  日期: {currentDate}
-                </p>
-              </div>
-              <div className="text-left lg:text-right">
-                <h2 className="text-lg sm:text-xl font-bold">{COMPANY_INFO.name}</h2>
-                <p className="text-sm sm:text-base text-gray-600">{COMPANY_INFO.address}</p>
-                <p className="text-sm sm:text-base text-gray-600">電話: {COMPANY_INFO.phone}</p>
-                <p className="text-sm sm:text-base text-gray-600">{COMPANY_INFO.email}</p>
-              </div>
-            </div>
+        <div className="stat-card">
+          <div className="stat-value">
+            {invoices.filter(i => i.status === 'draft').length}
+          </div>
+          <div className="stat-label">草稿</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">
+            {invoices.filter(i => i.status === 'sent').length}
+          </div>
+          <div className="stat-label">已發送</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">
+            ${invoices.reduce((sum, i) => i.status === 'paid' ? sum + i.totalAmount : sum, 0).toFixed(0)}
+          </div>
+          <div className="stat-label">已收款</div>
+        </div>
+      </div>
+
+      {/* 生成發票表單 */}
+      {isCreating && (
+        <div className="form-container">
+          <div className="form-header">
+            <h3>生成新發票</h3>
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsCreating(false)}
+            >
+              ✕ 關閉
+            </button>
           </div>
 
-          {/* 客戶資訊 */}
-          <div className="mb-4 sm:mb-6">
-            <h3 className="text-base sm:text-lg font-bold mb-2">帳單寄送地址:</h3>
-            <p className="text-sm sm:text-base text-gray-700">{CLIENT_INFO.name}</p>
-            <p className="text-sm sm:text-base text-gray-700">{CLIENT_INFO.address}</p>
-          </div>
-
-          {/* 桌面版表格 */}
-          <div className="hidden sm:block mb-4 sm:mb-6 overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-gray-300">
-                  <th className="text-left py-3 text-sm sm:text-base">項目描述</th>
-                  <th className="text-right py-3 text-sm sm:text-base">時數</th>
-                  <th className="text-right py-3 text-sm sm:text-base">時薪</th>
-                  <th className="text-right py-3 text-sm sm:text-base">金額</th>
-                </tr>
-              </thead>
-              <tbody>
-                {timeEntries.slice(0, 3).map(entry => (
-                  <tr key={entry.id} className="border-b border-gray-200">
-                    <td className="py-3 text-sm sm:text-base">
-                      {entry.project} - {entry.client}
-                    </td>
-                    <td className="text-right py-3 text-sm sm:text-base">
-                      {(entry.duration / 3600).toFixed(1)}h
-                    </td>
-                    <td className="text-right py-3 text-sm sm:text-base">
-                      {formatCurrency(Math.round(entry.amount / (entry.duration / 3600)))}
-                    </td>
-                    <td className="text-right py-3 text-sm sm:text-base">
-                      {formatCurrency(entry.amount)}
-                    </td>
-                  </tr>
+          <div className="form-grid">
+            {/* 選擇專案 */}
+            <div className="form-group">
+              <label>選擇專案 *</label>
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="form-select"
+                required
+              >
+                <option value="">請選擇專案</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.name}>
+                    {project.name} (NT${project.hourlyRate}/小時)
+                  </option>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 手機版卡片 */}
-          <div className="block sm:hidden mb-4 space-y-3">
-            {timeEntries.slice(0, 3).map(entry => (
-              <div key={entry.id} className="border border-gray-200 rounded-lg p-3">
-                <div className="font-semibold text-sm mb-2">
-                  {entry.project} - {entry.client}
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>時數: {(entry.duration / 3600).toFixed(1)}h</div>
-                  <div>時薪: {formatCurrency(Math.round(entry.amount / (entry.duration / 3600)))}</div>
-                  <div className="col-span-2 font-bold text-right">
-                    金額: {formatCurrency(entry.amount)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 總計區域 */}
-          <div className="flex justify-end">
-            <div className="text-right w-full sm:w-auto">
-              <div className="flex justify-between sm:w-48 py-2 text-sm sm:text-base">
-                <span>小計:</span>
-                <span>{formatCurrency(totalEarnings)}</span>
-              </div>
-              <div className="flex justify-between sm:w-48 py-2 text-sm sm:text-base">
-                <span>營業稅 ({(TAX_RATE * 100).toFixed(0)}%):</span>
-                <span>{formatCurrency(taxAmount)}</span>
-              </div>
-              <div className="flex justify-between sm:w-48 py-2 border-t-2 border-gray-300 font-bold text-base sm:text-lg">
-                <span>總計:</span>
-                <span>{formatCurrency(finalTotal)}</span>
-              </div>
+              </select>
             </div>
-          </div>
 
-          {/* 付款條件 */}
-          <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
-            <p className="text-xs sm:text-sm text-gray-600">付款條件: {PAYMENT_TERMS}</p>
-            <p className="text-xs sm:text-sm text-gray-600">謝謝您的合作！</p>
-          </div>
+            {/* 客戶名稱 */}
+            <div className="form-group">
+              <label>客戶名稱 *</label>
+              <input
+                type="text"
+                value={invoiceData.clientName}
+                onChange={(e) => setInvoiceData({...invoiceData, clientName: e.target.value})}
+                placeholder="客戶公司/姓名"
+                className="form-input"
+                required
+              />
+            </div>
 
-          {/* 操作按鈕 */}
-          <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-            <button 
-              onClick={() => alert('PDF 下載功能開發中')}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base"
-            >
-              下載 PDF
-            </button>
-            <button 
-              onClick={() => alert('郵件功能開發中')}
-              className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base"
-            >
-              發送郵件
-            </button>
+            {/* 開始日期 */}
+            <div className="form-group">
+              <label>開始日期 *</label>
+              <input
+                type="date"
+                value={selectedPeriod.start}
+                onChange={(e) => setSelectedPeriod({...selectedPeriod, start: e.target.value})}
+                className="form-input"
+                required
+              />
+            </div>
+
+            {/* 結束日期 */}
+            <div className="form-group">
+              <label>結束日期 *</label>
+              <input
+                type="date"
+                value={selectedPeriod.end}
+                onChange={(e) => setSelectedPeriod({...selectedPeriod, end: e.target.value})}
+                className="form-input"
+                required
+              />
+            </div>
+
+            {/* 客戶電子郵件 */}
+            <div className="form-group">
+              <label>客戶電子郵件</label>
+              <input
+                type="email"
+                value={invoiceData.clientEmail}
+                onChange={(e) => setInvoiceData({...invoiceData, clientEmail: e.target.value})}
+                placeholder="client@example.com"
+                className="form-input"
+              />
+            </div>
+
+            {/* 發票描述 */}
+            <div className="form-group">
+              <label>發票描述</label>
+              <input
+                type="text"
+                value={invoiceData.description}
+                onChange={(e) => setInvoiceData({...invoiceData, description: e.target.value})}
+                placeholder="專案開發服務費用"
+                className="form-input"
+              />
+            </div>
+
+            {/* 額外備註 */}
+            <div className="form-group form-group-full">
+              <label>額外備註</label>
+              <textarea
+                value={invoiceData.additionalNotes}
+                onChange={(e) => setInvoiceData({...invoiceData, additionalNotes: e.target.value})}
+                placeholder="付款條件、注意事項等..."
+                rows="3"
+                className="form-textarea"
+              />
+            </div>
+
+            {/* 預覽區域 */}
+            {selectedProject && selectedPeriod.start && selectedPeriod.end && (
+              <div className="form-group form-group-full">
+                <label>發票預覽</label>
+                <div className="invoice-preview">
+                  {(() => {
+                    const { totalHours, totalAmount, hourlyRate } = calculateInvoiceTotal();
+                    return (
+                      <div className="preview-content">
+                        <div className="preview-row">
+                          <span>專案：</span>
+                          <span>{selectedProject}</span>
+                        </div>
+                        <div className="preview-row">
+                          <span>期間：</span>
+                          <span>{selectedPeriod.start} 至 {selectedPeriod.end}</span>
+                        </div>
+                        <div className="preview-row">
+                          <span>總工時：</span>
+                          <span>{totalHours.toFixed(1)} 小時</span>
+                        </div>
+                        <div className="preview-row">
+                          <span>時薪：</span>
+                          <span>NT${hourlyRate}</span>
+                        </div>
+                        <div className="preview-row total">
+                          <span>總金額：</span>
+                          <span>NT${totalAmount.toFixed(0)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* 操作按鈕 */}
+            <div className="form-actions form-group-full">
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setIsCreating(false)}
+                type="button"
+              >
+                取消
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={generateInvoice}
+                type="button"
+              >
+                生成發票
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* 發票列表 */}
+      <div className="invoices-grid">
+        {invoices.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">🧾</div>
+            <h3>還沒有發票</h3>
+            <p>點擊上方「生成發票」按鈕來建立第一張發票</p>
+          </div>
+        ) : (
+          invoices.map(invoice => {
+            const statusInfo = getStatusBadge(invoice.status);
+            
+            return (
+              <div key={invoice.id} className="invoice-card">
+                <div className="invoice-header">
+                  <div>
+                    <h3>{invoice.invoiceNumber}</h3>
+                    <p className="invoice-project">{invoice.projectName}</p>
+                  </div>
+                  <div className={`status-badge ${statusInfo.class}`}>
+                    {statusInfo.text}
+                  </div>
+                </div>
+
+                <div className="invoice-client">
+                  <div className="client-info">
+                    <strong>{invoice.clientName}</strong>
+                    <span>{invoice.clientEmail}</span>
+                  </div>
+                </div>
+
+                <div className="invoice-period">
+                  <span>期間: {formatDate(invoice.period.start)} - {formatDate(invoice.period.end)}</span>
+                </div>
+
+                <div className="invoice-amount">
+                  <div className="amount-breakdown">
+                    <span>{formatHours(invoice.totalHours)} × ${invoice.hourlyRate}</span>
+                    <strong>${invoice.totalAmount.toFixed(0)}</strong>
+                  </div>
+                </div>
+
+                <div className="invoice-actions">
+                  <select
+                    value={invoice.status}
+                    onChange={(e) => updateInvoiceStatus(invoice.id, e.target.value)}
+                    className="status-select"
+                  >
+                    <option value="draft">草稿</option>
+                    <option value="sent">已發送</option>
+                    <option value="paid">已付款</option>
+                    <option value="overdue">逾期</option>
+                  </select>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => deleteInvoice(invoice.id)}
+                  >
+                    刪除
+                  </button>
+                </div>
+
+                <div className="invoice-date">
+                  建立於 {formatDate(invoice.createdAt)}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 };

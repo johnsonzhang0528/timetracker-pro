@@ -4,7 +4,6 @@ import TimeTracker from './Components/TimeTracker';
 import ProjectManager from './Components/ProjectManager';
 import Reports from './Components/Reports';
 import Invoice from './Components/Invoice';
-import Toast from './Components/Toast';
 import { useTimeTracker, useLocalStorage } from './Hooks/useTimeTracker';
 import { TABS } from './Constants';
 
@@ -24,16 +23,20 @@ const App = () => {
     setSelectedProject,
     setActiveTab,
     setProjects,
-    setTimeEntries,
     hideToast
   } = useTimeTracker();
 
   // 專案管理狀態
   const [showNewProject, setShowNewProject] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', client: '', rate: '', color: '#3B82F6' });
+  const [newProject, setNewProject] = useState({ 
+    name: '', 
+    client: '', 
+    rate: '', 
+    color: '#3b82f6' 
+  });
   const [formErrors, setFormErrors] = useState({});
 
-  // 新增專案函數 - 增強版
+  // 新增專案函數
   const addProject = () => {
     const errors = {};
     
@@ -59,7 +62,7 @@ const App = () => {
       name: newProject.name.trim(),
       client: newProject.client.trim(),
       rate: parseInt(newProject.rate),
-      color: newProject.color || '#3B82F6'
+      color: newProject.color
     };
     
     setProjects(prev => [...prev, project]);
@@ -70,12 +73,12 @@ const App = () => {
     }
     
     // 重置表單
-    setNewProject({ name: '', client: '', rate: '', color: '#3B82F6' });
+    setNewProject({ name: '', client: '', rate: '', color: '#3b82f6' });
     setFormErrors({});
     setShowNewProject(false);
   };
 
-  // 刪除專案函數 - 增強版
+  // 刪除專案函數
   const deleteProject = (projectId) => {
     if (window.confirm('確定要刪除此專案嗎？')) {
       const updatedProjects = projects.filter(p => p.id !== projectId);
@@ -125,10 +128,10 @@ const App = () => {
         );
       
       case TABS.REPORTS:
-        return <Reports timeEntries={timeEntries} />;
+        return <Reports timeEntries={timeEntries} projects={projects} />;
       
       case TABS.INVOICE:
-        return <Invoice timeEntries={timeEntries} />;
+        return <Invoice timeEntries={timeEntries} projects={projects} />;
       
       default:
         return (
@@ -149,28 +152,44 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      
+    <div className="app">
       {/* 導航組件 */}
-      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navigation 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        isTracking={isTracking}
+      />
       
-      {/* 主要內容區域 - 響應式容器 */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="max-w-6xl mx-auto">
+      {/* 主要內容區域 */}
+      <main className="main">
+        <div className="container">
           {renderCurrentTab()}
         </div>
       </main>
 
       {/* Toast 通知 */}
       {showToast && (
-        <Toast 
-          message={showToast.message}
-          type={showToast.type}
-          onClose={hideToast}
-          position="top-right"
-        />
+        <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 fade-in">
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${
+              showToast.type === 'success' ? 'bg-green-500' : 
+              showToast.type === 'error' ? 'bg-red-500' : 
+              'bg-blue-500'
+            }`}></div>
+            <span className="text-sm text-gray-700">{showToast.message}</span>
+            <button 
+              onClick={hideToast}
+              className="text-gray-400 hover:text-gray-600 ml-2"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
       )}
 
+      {/* 底部安全區域 */}
+      <div className="safe-area desktop-hidden"></div>
+      
       {/* 無障礙輔助 */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {isTracking ? '計時器正在運行' : '計時器已停止'}
