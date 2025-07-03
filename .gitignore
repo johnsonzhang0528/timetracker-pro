@@ -89,3 +89,27 @@ temp/
 
 # TernJS port file
 .tern-port
+
+# Backend specific files
+backend/logs/
+backend/uploads/
+backend/dev.db*
+backend/prisma/dev.db*
+backend/.env
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Prisma
+prisma/migrations/*/migration.sql
+
+# Additional backend ignores
+backend/node_modules/
+backend/dist/
+backend/coverage/
