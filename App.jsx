@@ -6,6 +6,7 @@ import Reports from './Components/Reports';
 import Invoice from './Components/Invoice';
 import Auth from './Components/Auth';
 import UserProfile from './Components/UserProfile';
+import AuthGuard from './Components/AuthGuard';
 import { useTimeTracker, useLocalStorage } from './Hooks/useTimeTracker';
 import { useTimeTrackerAPI } from './Hooks/useTimeTrackerAPI';
 import { useAuthContext } from './Hooks/useAuth';
@@ -119,23 +120,29 @@ const App = () => {
   if (authLoading) {
     console.log('⏳ App 組件 - 認證載入中');
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">載入中...</p>
+      <AuthGuard>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">載入中...</p>
+          </div>
         </div>
-      </div>
+      </AuthGuard>
     );
   }
 
   // 未登入時顯示認證頁面
   if (!isAuthenticated) {
     console.log('🚪 App 組件 - 顯示認證頁面，isAuthenticated =', isAuthenticated);
-    return <Auth onAuthSuccess={() => {
-      console.log('🎯 onAuthSuccess 回調被調用');
-      console.log('🔄 設置 activeTab 為 TRACKER');
-      setActiveTab(TABS.TRACKER);
-    }} />;
+    return (
+      <AuthGuard>
+        <Auth onAuthSuccess={() => {
+          console.log('🎯 onAuthSuccess 回調被調用');
+          console.log('🔄 設置 activeTab 為 TRACKER');
+          setActiveTab(TABS.TRACKER);
+        }} />
+      </AuthGuard>
+    );
   }
 
   console.log('✅ App 組件 - 用戶已認證，顯示主應用，當前頁面:', activeTab);
@@ -201,49 +208,51 @@ const App = () => {
   };
 
   return (
-    <div className="app">
-      {/* 導航組件 */}
-      <Navigation 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab}
-        isTracking={isTracking}
-      />
-      
-      {/* 主要內容區域 */}
-      <main className="main">
-        <div className="container">
-          {renderCurrentTab()}
-        </div>
-      </main>
-
-      {/* Toast 通知 */}
-      {showToast && (
-        <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 fade-in">
-          <div className="flex items-center gap-3">
-            <div className={`w-2 h-2 rounded-full ${
-              showToast.type === 'success' ? 'bg-green-500' : 
-              showToast.type === 'error' ? 'bg-red-500' : 
-              'bg-blue-500'
-            }`}></div>
-            <span className="text-sm text-gray-700">{showToast.message}</span>
-            <button 
-              onClick={hideToast}
-              className="text-gray-400 hover:text-gray-600 ml-2"
-            >
-              ✕
-            </button>
+    <AuthGuard>
+      <div className="app">
+        {/* 導航組件 */}
+        <Navigation 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isTracking={isTracking}
+        />
+        
+        {/* 主要內容區域 */}
+        <main className="main">
+          <div className="container">
+            {renderCurrentTab()}
           </div>
-        </div>
-      )}
+        </main>
 
-      {/* 底部安全區域 */}
-      <div className="safe-area desktop-hidden"></div>
-      
-      {/* 無障礙輔助 */}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {isTracking ? '計時器正在運行' : '計時器已停止'}
+        {/* Toast 通知 */}
+        {showToast && (
+          <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 fade-in">
+            <div className="flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full ${
+                showToast.type === 'success' ? 'bg-green-500' : 
+                showToast.type === 'error' ? 'bg-red-500' : 
+                'bg-blue-500'
+              }`}></div>
+              <span className="text-sm text-gray-700">{showToast.message}</span>
+              <button 
+                onClick={hideToast}
+                className="text-gray-400 hover:text-gray-600 ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 底部安全區域 */}
+        <div className="safe-area desktop-hidden"></div>
+        
+        {/* 無障礙輔助 */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {isTracking ? '計時器正在運行' : '計時器已停止'}
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 };
 

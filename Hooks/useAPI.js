@@ -80,6 +80,11 @@ const apiRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem('timetracker_auth_token');
   const requestKey = `${options.method || 'GET'}_${endpoint}_${JSON.stringify(options.body || '')}`;
   
+  // 如果沒有 token 且需要認證的端點，直接拋出錯誤
+  if (!token && !endpoint.includes('/auth/') && !endpoint.includes('/health')) {
+    throw new Error('未找到認證令牌，請先登入');
+  }
+  
   // 清理過期快取
   cleanupCache();
   
@@ -143,6 +148,20 @@ const apiRequest = async (endpoint, options = {}) => {
         
         if (!response.ok) {
           let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          
+          if (response.status === 401) {
+            // 401 錯誤 - 清除無效的令牌
+            localStorage.removeItem('timetracker_auth_token');
+            localStorage.removeItem('timetracker_user_data');
+            localStorage.removeItem('timetracker_refresh_token');
+            
+            // 如果是認證相關的端點，直接拋出錯誤
+            if (endpoint.includes('/auth/')) {
+              errorMessage = '認證失敗，請檢查您的登入資訊';
+            } else {
+              errorMessage = '認證令牌已過期，請重新登入';
+            }
+          }
           
           try {
             const errorData = await response.json();

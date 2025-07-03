@@ -104,9 +104,19 @@ export const checkAPIAvailability = async () => {
       };
     }
   } catch (error) {
+    let reason = error.message;
+    
+    if (error.name === 'AbortError') {
+      reason = 'API 連接超時';
+    } else if (error.code === 'ECONNREFUSED') {
+      reason = 'API 服務器未啟動 (連接被拒絕)';
+    } else if (error.code === 'ENOTFOUND') {
+      reason = 'API 服務器位址無效';
+    }
+    
     return { 
       available: false, 
-      reason: error.name === 'AbortError' ? 'Timeout' : error.message 
+      reason: reason 
     };
   }
 };

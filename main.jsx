@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AuthProvider } from './Hooks/useAuth.js'
 import { APIProvider } from './contexts/APIContext.jsx'
+import APIErrorHandler from './Components/APIErrorHandler.jsx'
 import './styles.css'
 
 // 錯誤邊界組件
@@ -90,7 +91,9 @@ const initializeApp = () => {
       <ErrorBoundary>
         <APIProvider>
           <AuthProvider>
-            <App />
+            <APIErrorHandler>
+              <App />
+            </APIErrorHandler>
           </AuthProvider>
         </APIProvider>
       </ErrorBoundary>

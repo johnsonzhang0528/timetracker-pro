@@ -13,6 +13,45 @@ const AUTH_STORAGE_KEYS = {
 // API 基礎 URL (後端服務器)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// 通用 API 請求函數
+const apiRequest = async (endpoint, options = {}) => {
+  const token = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
+  
+  const defaultOptions = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    ...options,
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, defaultOptions);
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        // 無法解析 JSON，使用 HTTP 狀態信息
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    // 處理網絡錯誤
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('無法連接到服務器，請檢查網絡連接');
+    }
+    
+    throw error;
+  }
+};
+
 // 模擬用戶資料 (開發階段)
 const MOCK_USERS = [
   {
@@ -31,8 +70,80 @@ const MOCK_USERS = [
   }
 ];
 
+// 驗證 Token API 調用
+const verifyTokenAPI = async (token) => {
+  try {
+    const response = await apiRequest('/auth/verify', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    
+    return { 
+      success: true, 
+      data: response.data 
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 登入 API 調用
+const loginAPI = async (email, password) => {
+  try {
+    const response = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    
+    // 後端返回的格式：{ success: true, data: { user, accessToken, refreshToken } }
+    return { 
+      success: true, 
+      data: {
+        user: response.data.user,
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken
+      }
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 註冊 API 調用
+const registerAPI = async (userData) => {
+  try {
+    const response = await apiRequest('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+    
+    return { 
+      success: true, 
+      data: {
+        user: response.data.user,
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken
+      }
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 登出 API 調用
+const logoutAPI = async () => {
+  try {
+    const response = await apiRequest('/auth/logout', {
+      method: 'POST',
+    });
+    return { success: true, message: response.message };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
 // 用戶認證 Hook
-export const useAuth = () => {
+const useAuth = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -51,24 +162,55 @@ export const useAuth = () => {
       const userData = localStorage.getItem(AUTH_STORAGE_KEYS.USER);
 
       if (token && userData) {
-        // 驗證 token 有效性 (真實 API)
-        const tokenValidation = await verifyTokenAPI(token);
-        
-        if (tokenValidation.success) {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-          setIsAuthenticated(true);
-        } else {
-          // Token 無效，清除本地資料
-          localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
-          localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
-          localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
-          setUser(null);
-          setIsAuthenticated(false);
+        try {
+          // 驗證 token 有效性 (真實 API)
+          const tokenValidation = await verifyTokenAPI(token);
+          
+          if (tokenValidation.success) {
+            const parsedUser = JSON.parse(userData);
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          } else {
+            // Token 無效，清除本地資料
+            console.warn('Token 驗證失敗，清除本地認證資料');
+            localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+            localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+            localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } catch (apiError) {
+          // API 不可用時，嘗試使用本地資料
+          console.warn('API 不可用，使用本地認證資料:', apiError.message);
+          try {
+            const parsedUser = JSON.parse(userData);
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          } catch (parseError) {
+            // 本地資料也無效
+            console.error('本地資料解析失敗:', parseError);
+            localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+            localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+            localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+            setUser(null);
+            setIsAuthenticated(false);
+          }
         }
+      } else {
+        // 沒有認證資料
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('檢查認證狀態失敗:', error);
+      // 如果是 401 錯誤，清除認證資料
+      if (error.message.includes('401')) {
+        localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+        localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+        setUser(null);
+        setIsAuthenticated(false);
+      }
       setError('認證狀態檢查失敗');
     } finally {
       setIsLoading(false);
@@ -300,92 +442,6 @@ export const useAuth = () => {
   };
 };
 
-// 真實 API 調用函數
-const apiRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const token = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
-  
-  const defaultOptions = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    ...options,
-  };
-
-  try {
-    const response = await fetch(url, defaultOptions);
-    
-    if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch (e) {
-        // 如果無法解析 JSON，使用 HTTP 狀態信息
-      }
-      
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('❌ API 請求失敗:', error);
-    
-    // 處理網絡錯誤
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('無法連接到服務器，請檢查網絡連接');
-    }
-    
-    throw error;
-  }
-};
-
-// 登入 API 調用
-const loginAPI = async (email, password) => {
-  try {
-    const response = await apiRequest('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    
-    // 後端返回的格式：{ success: true, data: { user, accessToken, refreshToken } }
-    return { 
-      success: true, 
-      data: {
-        user: response.data.user,
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken
-      }
-    };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-};
-
-// 註冊 API 調用
-const registerAPI = async (userData) => {
-  try {
-    const response = await apiRequest('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-    
-    return { 
-      success: true, 
-      data: {
-        user: response.data.user,
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken
-      }
-    };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-};
-
 // 忘記密碼 API 調用
 const forgotPasswordAPI = async (email) => {
   try {
@@ -405,35 +461,6 @@ const updateUserAPI = async (userId, updates) => {
     });
     
     return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-};
-
-// 驗證 Token API 調用
-const verifyTokenAPI = async (token) => {
-  try {
-    const response = await apiRequest('/auth/verify', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    
-    return { 
-      success: true, 
-      data: response.data 
-    };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-};
-
-// 登出 API 調用
-const logoutAPI = async () => {
-  try {
-    const response = await apiRequest('/auth/logout', {
-      method: 'POST',
-    });
-    return { success: true, message: response.message };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -567,14 +594,14 @@ const mockLogoutAllDevicesAPI = async (userId) => {
 };
 
 // 認證上下文 Provider
-export const AuthProvider = ({ children }) => {
+const AuthProvider = ({ children }) => {
   const auth = useAuth();
   
   return React.createElement(AuthContext.Provider, { value: auth }, children);
 };
 
 // 使用認證上下文的 Hook
-export const useAuthContext = () => {
+const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuthContext must be used within an AuthProvider');
@@ -582,4 +609,15 @@ export const useAuthContext = () => {
   return context;
 };
 
+// 導出所有必要的函數和組件
+export {
+  AuthContext,
+  AUTH_STORAGE_KEYS,
+  API_BASE_URL,
+  useAuth,
+  AuthProvider,
+  useAuthContext
+};
+
+// 默認導出
 export default useAuth;
