@@ -22,21 +22,60 @@ const TimeTracker = ({
 
   // 計算當前收入
   const currentEarnings = selectedProject 
-    ? calculateEarnings(currentTime, selectedProject.rate)
+    ? calculateEarnings(currentTime, selectedProject.rate || selectedProject.hourlyRate || 0)
     : 0;
+  
+  console.log('計算收入:', {
+    currentTime,
+    projectRate: selectedProject?.rate,
+    projectHourlyRate: selectedProject?.hourlyRate,
+    usedRate: selectedProject ? (selectedProject.rate || selectedProject.hourlyRate || 0) : 0,
+    calculatedEarnings: selectedProject 
+      ? calculateEarnings(currentTime, selectedProject.rate || selectedProject.hourlyRate || 0)
+      : 0
+  });
 
   // 計算統計數據
-  const todayEntries = timeEntries.filter(entry => 
-    entry.date === new Date().toISOString().split('T')[0]
-  );
+  console.log('所有時間記錄:', timeEntries);
+  
+  // 獲取今天的日期 (YYYY-MM-DD 格式)
+  const today = new Date().toISOString().split('T')[0];
+  
+  // 過濾今天的記錄 (同時支援 date 和 startTime 格式)
+  const todayEntries = timeEntries.filter(entry => {
+    // 如果 entry 有 startTime，使用它 (API 格式)
+    if (entry.startTime) {
+      const entryDate = new Date(entry.startTime).toISOString().split('T')[0];
+      return entryDate === today;
+    }
+    // 如果 entry 有 date，使用它 (本地格式)
+    else if (entry.date) {
+      return entry.date === today;
+    }
+    return false;
+  });
+  
+  console.log('今天的記錄:', todayEntries);
+  
   const todayTotal = todayEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
   const todayHours = todayEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  const weekEntries = timeEntries.filter(entry => 
-    new Date(entry.date) >= weekStart
-  );
+  
+  const weekEntries = timeEntries.filter(entry => {
+    // 如果有 startTime，使用它 (API 格式)
+    if (entry.startTime) {
+      return new Date(entry.startTime) >= weekStart;
+    }
+    // 如果有 date，使用它 (本地格式)
+    else if (entry.date) {
+      return new Date(entry.date) >= weekStart;
+    }
+    return false;
+  });
+  
+  console.log('本週的記錄:', weekEntries);
   const weekTotal = weekEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
 
   // 專案提示
@@ -62,6 +101,15 @@ const TimeTracker = ({
       onStopTracking();
     }
   };
+
+  // 監控時間條目的變化
+  useEffect(() => {
+    console.log('TimeTracker 收到更新的時間條目:', timeEntries.length);
+    // 確保頂部顯示最近的記錄
+    if (timeEntries.length > 0) {
+      console.log('最新時間條目:', timeEntries[0]);
+    }
+  }, [timeEntries]);
 
   // 如果沒有專案，顯示引導
   if (hasNoProjects) {
@@ -122,15 +170,23 @@ const TimeTracker = ({
             <select
               value={selectedProject?.id || ''}
               onChange={(e) => {
-                const project = projects.find(p => p.id === parseInt(e.target.value));
-                onProjectChange(project);
+                console.log('選擇專案:', e.target.value);
+                // 檢查專案 ID 格式並靈活比較
+                const selectedId = e.target.value;
+                const project = projects.find(p => 
+                  String(p.id) === String(selectedId)
+                );
+                console.log('找到專案:', project);
+                if (project) {
+                  onProjectChange(project);
+                }
               }}
               className="form-select"
             >
               <option value="">請選擇專案...</option>
               {projects.map(project => (
                 <option key={project.id} value={project.id}>
-                  {project.name} - {project.client?.name || project.client?.company || 'Unknown Client'} ({formatCurrency(project.rate || project.hourlyRate)}/小時)
+                  {project.name} - {project.client?.name || project.client?.company || 'Unknown Client'} ({formatCurrency(project.rate || project.hourlyRate || 0)}/小時)
                 </option>
               ))}
             </select>
@@ -278,7 +334,7 @@ const TimeTracker = ({
             <DollarSign size={16} style={{ color: 'var(--warning)' }} />
           </div>
           <div className="stat-value">
-            {selectedProject ? formatCurrency(selectedProject.rate) : '--'}
+            {selectedProject ? formatCurrency(selectedProject.rate || selectedProject.hourlyRate) : '--'}
           </div>
           <div className="stat-description">
             {selectedProject ? selectedProject.name : '未選擇專案'}
@@ -301,6 +357,7 @@ const TimeTracker = ({
             </div>
           </div>
           <div>
+            {console.log('顯示最近記錄:', timeEntries)}
             {timeEntries.slice(0, 3).map((entry, index) => (
               <div key={entry.id} style={{
                 padding: 'var(--space-4)',
@@ -309,10 +366,13 @@ const TimeTracker = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <div style={{ fontWeight: '500', color: 'var(--gray-900)' }}>
-                      {entry.project?.name || entry.project || 'Unknown Project'}
+                      {entry.project?.name || (typeof entry.project === 'string' ? entry.project : 'Unknown Project')}
                     </div>
                     <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
-                      {entry.description || '無描述'} • {entry.date}
+                      {entry.description || '無描述'} • {
+                        entry.date || 
+                        (entry.startTime ? new Date(entry.startTime).toLocaleDateString('zh-TW') : '未知日期')
+                      }
                     </div>
                   </div>
                   <div className="text-right">

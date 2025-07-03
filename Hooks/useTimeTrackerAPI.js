@@ -105,7 +105,13 @@ export const useTimeTrackerAPI = () => {
   useEffect(() => {
     if (activeEntry) {
       setIsTracking(true);
-      setSelectedProject(projects.find(p => p.id === activeEntry.projectId) || null);
+      // 使用 String 比較確保正確匹配專案 ID
+      const matchedProject = projects.find(p => String(p.id) === String(activeEntry.projectId)) || null;
+      console.log('🔍 活動計時關聯專案:', {
+        activeEntryProjectId: activeEntry.projectId,
+        matchedProject: matchedProject ? `${matchedProject.id} - ${matchedProject.name}` : 'null'
+      });
+      setSelectedProject(matchedProject);
       setStartTime(new Date(activeEntry.startTime));
       
       // 計算已經過的時間
@@ -200,10 +206,41 @@ export const useTimeTrackerAPI = () => {
     }
     
     try {
+      console.log('停止計時中...', activeEntry.id);
       const result = await timeAPI.stopTimer(activeEntry.id);
       
       if (result.success) {
-        const amount = calculateEarnings(currentTime, selectedProject?.hourlyRate || 0);
+        const amount = calculateEarnings(currentTime, selectedProject?.hourlyRate || selectedProject?.rate || 0);
+        console.log('停止計時，計算收入:', {
+          currentTime,
+          hourlyRate: selectedProject?.hourlyRate,
+          rate: selectedProject?.rate,
+          effectiveRate: selectedProject?.hourlyRate || selectedProject?.rate || 0,
+          calculatedAmount: amount
+        });
+        
+        // 立即將新的時間記錄添加到現有記錄中
+        const newTimeEntry = result.data;
+        if (newTimeEntry) {
+          console.log('新添加的時間記錄:', newTimeEntry);
+          // 直接更新 timeEntries 狀態，確保最新記錄立即顯示在 UI 中
+          try {
+            timeAPI.setTimeEntries(prev => {
+              // 檢查這條記錄是否已經存在
+              const exists = prev.some(entry => entry.id === newTimeEntry.id);
+              if (exists) {
+                console.log('此記錄已存在，僅更新');
+                return prev.map(entry => entry.id === newTimeEntry.id ? newTimeEntry : entry);
+              } else {
+                console.log('添加新記錄到時間條目列表');
+                return [newTimeEntry, ...prev];
+              }
+            });
+          } catch (err) {
+            console.error('更新時間條目狀態時出錯:', err);
+          }
+        }
+        
         displayToast(`工作記錄已儲存！收入 NT$ ${amount.toLocaleString()}`, 'success');
         
         trackUserAction('stop_tracking', { 
@@ -212,8 +249,12 @@ export const useTimeTrackerAPI = () => {
           project: selectedProject?.name
         });
         
-        // 重新載入時間記錄
-        await timeAPI.fetchTimeEntries();
+        // 為了確保數據一致性，異步重新載入所有時間記錄
+        console.log('重新載入所有時間記錄...');
+        setTimeout(async () => {
+          const entriesResult = await timeAPI.fetchTimeEntries();
+          console.log('重新載入後的所有時間記錄:', entriesResult?.data?.timeEntries?.length || '無資料');
+        }, 500);
       } else {
         displayToast(result.message || '停止計時失敗', 'error');
       }
@@ -221,7 +262,7 @@ export const useTimeTrackerAPI = () => {
       console.error('停止計時失敗:', error);
       displayToast('停止計時失敗', 'error');
     }
-  }, [activeEntry, currentTime, selectedProject, timeAPI]);
+  }, [activeEntry, currentTime, selectedProject, timeAPI, timeAPI.setTimeEntries]);
 
   // 創建專案 - API 版本
   const createProject = useCallback(async (projectData) => {

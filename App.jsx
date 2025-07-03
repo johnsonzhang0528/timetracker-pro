@@ -43,11 +43,24 @@ const App = () => {
     startTracking,
     pauseTracking,
     stopTracking,
-    setSelectedProject,
+    setSelectedProject: originalSetSelectedProject,
     setActiveTab,
     setProjects,
     hideToast
   } = timeTrackerHook;
+  
+  // 包裝 setSelectedProject 函數以添加調試日誌
+  const setSelectedProject = (project) => {
+    console.log('選擇專案:', {
+      project,
+      id: project?.id,
+      name: project?.name,
+      hourlyRate: project?.rate,
+      rate: project?.rate,
+      effectiveRate: project?.rate || project?.hourlyRate
+    });
+    originalSetSelectedProject(project);
+  };
 
   // 專案管理狀態
   const [showNewProject, setShowNewProject] = useState(false);
@@ -132,6 +145,14 @@ const App = () => {
       }
     }
   };
+
+  // 監聽 timeEntries 變化
+  useEffect(() => {
+    console.log('🔄 時間記錄更新:', timeEntries.length);
+    if (timeEntries.length > 0) {
+      console.log('最新記錄:', timeEntries[0]);
+    }
+  }, [timeEntries]);
 
   // 啟用本地儲存
   useLocalStorage(projects, timeEntries, currentTime, isTracking, selectedProject);

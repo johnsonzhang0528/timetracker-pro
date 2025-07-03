@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // API 基礎 URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -213,26 +213,23 @@ export const useProjectAPI = () => {
   const [error, setError] = useState(null);
 
   // 獲取專案列表
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      console.log('🏗️ 開始獲取專案列表');
+      const data = await apiRequest('/projects');
+      console.log('📋 獲取到專案列表:', data.data.projects);
+      setProjects(data.data.projects);
       setError(null);
-      
-      const response = await apiRequest('/projects');
-      
-      if (response.success) {
-        setProjects(response.data.projects || []);
-        return { success: true, data: response.data };
-      } else {
-        throw new Error(response.message || '獲取專案列表失敗');
-      }
-    } catch (err) {
-      setError(err.message);
-      return { success: false, message: err.message };
+      return data.data.projects;
+    } catch (error) {
+      console.error('❌ 獲取專案列表失敗:', error);
+      setError(error);
+      return [];
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 創建專案
   const createProject = async (projectData) => {
@@ -337,7 +334,7 @@ export const useProjectAPI = () => {
   // 初始化時載入專案
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [fetchProjects]);
 
   return {
     projects,
@@ -371,8 +368,17 @@ export const useTimeTrackingAPI = () => {
       const response = await apiRequest(endpoint);
       
       if (response.success) {
-        setTimeEntries(response.data.timeEntries || []);
-        return { success: true, data: response.data };
+        console.log('從API獲取到的時間記錄:', response.data.timeEntries);
+        
+        // 確保最新記錄排在前面
+        const sortedEntries = [...(response.data.timeEntries || [])].sort((a, b) => {
+          const dateA = a.endTime || a.startTime;
+          const dateB = b.endTime || b.startTime;
+          return new Date(dateB) - new Date(dateA); // 降序排列，最新的在前
+        });
+        
+        setTimeEntries(sortedEntries);
+        return { success: true, data: { ...response.data, timeEntries: sortedEntries } };
       } else {
         throw new Error(response.message || '獲取時間記錄失敗');
       }
@@ -536,6 +542,7 @@ export const useTimeTrackingAPI = () => {
     getActiveTimer,
     updateTimeEntry,
     deleteTimeEntry,
+    setTimeEntries, // 暴露 setTimeEntries 函數以便外部直接更新狀態
     clearError: () => setError(null),
   };
 };

@@ -8,7 +8,18 @@ export const formatTime = (seconds) => {
 
 // 計算收入
 export const calculateEarnings = (duration, rate) => {
-  return Math.round((duration / 3600) * rate);
+  // 計算每秒的收入 (hourlyRate / 3600)
+  const perSecondRate = rate / 3600;
+  // 直接乘以秒數，並保留至少 2 位小數，以顯示小額收入
+  const earnings = duration * perSecondRate;
+  
+  // 如果收入非常小 (不足 1 元)，但時間超過 1 秒，至少顯示 1 元
+  if (earnings > 0 && earnings < 1 && duration > 1) {
+    return 1;
+  }
+  
+  // 否則四捨五入到整數
+  return Math.round(earnings);
 };
 
 // 產生隨機顏色
