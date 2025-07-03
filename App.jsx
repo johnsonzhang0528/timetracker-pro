@@ -26,12 +26,8 @@ const App = () => {
     API_CONFIG_useAPI: API_CONFIG.useAPI
   });
   
-  // 始終初始化兩個 Hook，但只使用其中一個
-  const timeTrackerHookLocal = useTimeTracker();
-  const timeTrackerHookAPI = useTimeTrackerAPI();
-  
-  // 根據 API 配置選擇使用的 Hook
-  const timeTrackerHook = useAPI ? timeTrackerHookAPI : timeTrackerHookLocal;
+  // 根據 API 配置選擇使用的 Hook（避免同時初始化兩個 Hook）
+  const timeTrackerHook = useAPI ? useTimeTrackerAPI() : useTimeTracker();
   
   // 使用自定義 Hooks
   const {

@@ -6,103 +6,182 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 // 請求限制配置
 const REQUEST_LIMITS = {
   maxRetries: 3,
-  baseDelay: 1000, // 1秒
+  baseDelay: 2000, // 2秒 (增加基礎延遲)
   backoffMultiplier: 2,
-  maxDelay: 10000, // 10秒
+  maxDelay: 30000, // 30秒 (增加最大延遲)
+  maxConcurrentRequests: 3, // 最大並發請求數
+  rateLimitDelay: 5000, // 429 錯誤的基礎等待時間 (5秒)
 };
 
 // 請求去重和限制
 const requestCache = new Map();
 const activeRequests = new Set();
+let concurrentRequests = 0;
+
+// 請求隊列
+const requestQueue = [];
+let isProcessingQueue = false;
 
 // 延遲函數
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// 清理過期的請求快取
+const cleanupCache = () => {
+  const now = Date.now();
+  const maxAge = 60000; // 1分鐘
+  
+  for (const [key, value] of requestCache.entries()) {
+    if (value.timestamp && now - value.timestamp > maxAge) {
+      requestCache.delete(key);
+    }
+  }
+};
+
+// 處理請求隊列
+const processQueue = async () => {
+  if (isProcessingQueue || requestQueue.length === 0) {
+    return;
+  }
+  
+  isProcessingQueue = true;
+  
+  while (requestQueue.length > 0 && concurrentRequests < REQUEST_LIMITS.maxConcurrentRequests) {
+    const { resolve, reject, requestFn } = requestQueue.shift();
+    concurrentRequests++;
+    
+    try {
+      const result = await requestFn();
+      resolve(result);
+    } catch (error) {
+      reject(error);
+    } finally {
+      concurrentRequests--;
+    }
+  }
+  
+  isProcessingQueue = false;
+  
+  // 如果還有請求在隊列中，繼續處理
+  if (requestQueue.length > 0) {
+    setTimeout(processQueue, 100);
+  }
+};
+
+// 添加請求到隊列
+const queueRequest = (requestFn) => {
+  return new Promise((resolve, reject) => {
+    requestQueue.push({ resolve, reject, requestFn });
+    processQueue();
+  });
+};
 
 // 通用 API 請求函數
 const apiRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem('timetracker_auth_token');
   const requestKey = `${options.method || 'GET'}_${endpoint}_${JSON.stringify(options.body || '')}`;
   
-  // 防止重複請求
-  if (activeRequests.has(requestKey)) {
-    console.log(`🔄 跳過重複請求: ${requestKey}`);
-    return requestCache.get(requestKey);
+  // 清理過期快取
+  cleanupCache();
+  
+  // 檢查快取
+  const cached = requestCache.get(requestKey);
+  if (cached && cached.data) {
+    console.log(`🔄 使用快取響應: ${requestKey}`);
+    return cached.data;
   }
   
-  activeRequests.add(requestKey);
-  
-  const defaultOptions = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    ...options,
-  };
-
-  let lastError;
-  
-  for (let attempt = 0; attempt < REQUEST_LIMITS.maxRetries; attempt++) {
-    try {
-      if (attempt > 0) {
-        const delayMs = Math.min(
-          REQUEST_LIMITS.baseDelay * Math.pow(REQUEST_LIMITS.backoffMultiplier, attempt - 1),
-          REQUEST_LIMITS.maxDelay
-        );
-        console.log(`⏳ 重試請求 (${attempt + 1}/${REQUEST_LIMITS.maxRetries})，延遲 ${delayMs}ms`);
-        await delay(delayMs);
-      }
-      
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, defaultOptions);
-      
-      if (response.status === 429) {
-        // 429 Too Many Requests - 需要重試
-        const retryAfter = response.headers.get('Retry-After');
-        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : REQUEST_LIMITS.baseDelay * Math.pow(2, attempt);
-        console.warn(`⚠️ API 請求限制，等待 ${waitTime}ms 後重試`);
-        await delay(waitTime);
-        continue;
-      }
-      
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // 無法解析 JSON，使用 HTTP 狀態信息
-        }
-        
-        // 如果不是 429 錯誤，直接拋出
-        if (response.status !== 429) {
-          throw new Error(errorMessage);
-        }
-      }
-      
-      const data = await response.json();
-      const result = Promise.resolve(data);
-      requestCache.set(requestKey, result);
-      activeRequests.delete(requestKey);
-      return data;
-      
-    } catch (error) {
-      lastError = error;
-      
-      // 如果是網絡錯誤或 429 錯誤，繼續重試
-      if (error.name === 'TypeError' || error.message.includes('429')) {
-        console.warn(`⚠️ 請求失敗，準備重試 (${attempt + 1}/${REQUEST_LIMITS.maxRetries}):`, error.message);
-        continue;
-      }
-      
-      // 其他錯誤直接拋出
-      activeRequests.delete(requestKey);
-      throw error;
+  // 防止重複請求
+  if (activeRequests.has(requestKey)) {
+    console.log(`🔄 等待重複請求完成: ${requestKey}`);
+    // 等待現有請求完成
+    while (activeRequests.has(requestKey)) {
+      await delay(100);
+    }
+    const result = requestCache.get(requestKey);
+    if (result && result.data) {
+      return result.data;
     }
   }
   
-  // 所有重試都失敗了
-  activeRequests.delete(requestKey);
-  throw new Error(`請求失敗，已重試 ${REQUEST_LIMITS.maxRetries} 次: ${lastError.message}`);
+  // 使用隊列管理併發請求
+  return queueRequest(async () => {
+    activeRequests.add(requestKey);
+    
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      ...options,
+    };
+
+    let lastError;
+    
+    for (let attempt = 0; attempt < REQUEST_LIMITS.maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delayMs = Math.min(
+            REQUEST_LIMITS.baseDelay * Math.pow(REQUEST_LIMITS.backoffMultiplier, attempt - 1),
+            REQUEST_LIMITS.maxDelay
+          );
+          console.log(`⏳ 重試請求 (${attempt + 1}/${REQUEST_LIMITS.maxRetries})，延遲 ${delayMs}ms`);
+          await delay(delayMs);
+        }
+        
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, defaultOptions);
+        
+        if (response.status === 429) {
+          // 429 Too Many Requests - 需要更長的等待時間
+          const retryAfter = response.headers.get('Retry-After');
+          const waitTime = retryAfter ? 
+            parseInt(retryAfter) * 1000 : 
+            REQUEST_LIMITS.rateLimitDelay * Math.pow(2, attempt);
+          console.warn(`⚠️ API 請求限制 (429)，等待 ${waitTime}ms 後重試`);
+          await delay(waitTime);
+          continue;
+        }
+        
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            // 無法解析 JSON，使用 HTTP 狀態信息
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        
+        // 快取響應
+        requestCache.set(requestKey, {
+          data,
+          timestamp: Date.now()
+        });
+        
+        activeRequests.delete(requestKey);
+        return data;
+        
+      } catch (error) {
+        lastError = error;
+        
+        // 如果是網絡錯誤，繼續重試
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          console.warn(`⚠️ 網絡錯誤，準備重試 (${attempt + 1}/${REQUEST_LIMITS.maxRetries}):`, error.message);
+          continue;
+        }
+        
+        // 其他錯誤直接拋出
+        break;
+      }
+    }
+    
+    activeRequests.delete(requestKey);
+    throw lastError;
+  });
 };
 
 // 專案管理 API Hook

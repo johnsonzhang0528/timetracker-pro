@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { TIMER_INTERVAL } from '../Constants';
 import { calculateEarnings } from '../Utils/helpers';
 import { useProjectAPI, useTimeTrackingAPI, useClientAPI } from './useAPI';
@@ -26,6 +26,10 @@ export const useTimeTrackerAPI = () => {
   const [activeTab, setActiveTab] = useState('tracker');
   const [showToast, setShowToast] = useState(null);
 
+  // 防止重複載入的標記
+  const dataLoadingRef = useRef(false);
+  const initialLoadDoneRef = useRef(false);
+
   // 從 API Hook 中獲取數據
   const projects = projectAPI.projects;
   const timeEntries = timeAPI.timeEntries;
@@ -36,12 +40,57 @@ export const useTimeTrackerAPI = () => {
   const isLoading = projectAPI.loading || timeAPI.loading || clientAPI.loading;
   const hasError = projectAPI.error || timeAPI.error || clientAPI.error;
 
-  // 初始化數據載入
+  // 初始化數據載入 - 使用 useCallback 防止重複創建
+  const loadInitialData = useCallback(async () => {
+    // 防止重複載入
+    if (dataLoadingRef.current || initialLoadDoneRef.current) {
+      console.log('🔄 跳過重複的數據載入');
+      return;
+    }
+    
+    dataLoadingRef.current = true;
+    
+    try {
+      // 使用去重的請求載入所有數據
+      const loadPromises = [];
+      
+      // 避免重複載入 - 更嚴格的檢查
+      if (projects.length === 0 && !projectAPI.loading) {
+        loadPromises.push(projectAPI.fetchProjects());
+      }
+      if (timeEntries.length === 0 && !timeAPI.loading) {
+        loadPromises.push(timeAPI.fetchTimeEntries());
+      }
+      if (!activeEntry && !timeAPI.loading) {
+        loadPromises.push(timeAPI.getActiveTimer());
+      }
+      if (clients.length === 0 && !clientAPI.loading) {
+        loadPromises.push(clientAPI.fetchClients());
+      }
+      
+      // 只執行需要的請求
+      if (loadPromises.length > 0) {
+        console.log(`📡 載入 ${loadPromises.length} 個 API 請求`);
+        await Promise.allSettled(loadPromises);
+        displayToast('數據載入完成', 'success');
+      }
+      
+      initialLoadDoneRef.current = true;
+    } catch (error) {
+      console.error('載入數據時發生錯誤:', error);
+      displayToast('數據載入失敗', 'error');
+    } finally {
+      dataLoadingRef.current = false;
+    }
+  }, [projects.length, timeEntries.length, activeEntry, clients.length, 
+      projectAPI.loading, timeAPI.loading, clientAPI.loading]);
+
+  // 初始化數據載入 - 只在認證狀態改變時執行
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !initialLoadDoneRef.current) {
       loadInitialData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadInitialData]);
 
   // 監聽活動計時狀態
   useEffect(() => {
@@ -59,36 +108,6 @@ export const useTimeTrackerAPI = () => {
       setStartTime(null);
     }
   }, [activeEntry, projects]);
-
-  const loadInitialData = async () => {
-    try {
-      // 使用去重的請求載入所有數據
-      const loadPromises = [];
-      
-      // 避免重複載入
-      if (projects.length === 0) {
-        loadPromises.push(projectAPI.fetchProjects());
-      }
-      if (timeEntries.length === 0) {
-        loadPromises.push(timeAPI.fetchTimeEntries());
-      }
-      if (!activeEntry) {
-        loadPromises.push(timeAPI.getActiveTimer());
-      }
-      if (clients.length === 0) {
-        loadPromises.push(clientAPI.fetchClients());
-      }
-      
-      // 只執行需要的請求
-      if (loadPromises.length > 0) {
-        await Promise.allSettled(loadPromises);
-        displayToast('數據載入完成', 'success');
-      }
-    } catch (error) {
-      console.error('載入數據時發生錯誤:', error);
-      displayToast('數據載入失敗', 'error');
-    }
-  };
 
   // Toast 通知函數
   const displayToast = (message, type = 'success') => {
