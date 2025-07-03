@@ -10,8 +10,8 @@ const AUTH_STORAGE_KEYS = {
   REFRESH_TOKEN: 'timetracker_refresh_token'
 };
 
-// API 基礎 URL (開發階段使用模擬)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// API 基礎 URL (後端服務器)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // 模擬用戶資料 (開發階段)
 const MOCK_USERS = [
@@ -59,10 +59,10 @@ export const useAuth = () => {
       const userData = localStorage.getItem(AUTH_STORAGE_KEYS.USER);
 
       if (token && userData) {
-        // 驗證 token 有效性 (模擬)
-        const isValidToken = await validateToken(token);
+        // 驗證 token 有效性 (真實 API)
+        const tokenValidation = await verifyTokenAPI(token);
         
-        if (isValidToken) {
+        if (tokenValidation.success) {
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
           setIsAuthenticated(true);
@@ -98,18 +98,18 @@ export const useAuth = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('📡 調用模擬 API...');
-      // 模擬 API 調用
-      const response = await mockLoginAPI(email, password);
+      console.log('📡 調用真實 API...');
+      // 調用真實 API
+      const response = await loginAPI(email, password);
       
       console.log('📬 API 響應:', response);
       
       if (response.success) {
-        const { user: userData, token, refreshToken } = response.data;
+        const { user: userData, accessToken, refreshToken } = response.data;
         
         console.log('💾 儲存認證資料到 localStorage...');
         // 儲存認證資料
-        localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
+        localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, accessToken);
         localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(userData));
         
         if (rememberMe && refreshToken) {
@@ -142,14 +142,14 @@ export const useAuth = () => {
       setIsLoading(true);
       setError(null);
 
-      // 模擬 API 調用
-      const response = await mockRegisterAPI(userData);
+      // 調用真實 API
+      const response = await registerAPI(userData);
       
       if (response.success) {
-        const { user: newUser, token } = response.data;
+        const { user: newUser, accessToken } = response.data;
         
         // 自動登入新用戶
-        localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
+        localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, accessToken);
         localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(newUser));
 
         setUser(newUser);
@@ -174,6 +174,9 @@ export const useAuth = () => {
     try {
       setIsLoading(true);
       
+      // 調用真實 API 登出
+      const response = await logoutAPI();
+      
       // 清除本地儲存
       localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
       localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
@@ -184,12 +187,17 @@ export const useAuth = () => {
       setIsAuthenticated(false);
       setError(null);
       
-      // 在實際應用中，這裡會調用 API 使 token 失效
-      
       return { success: true, message: '已成功登出' };
     } catch (error) {
       console.error('登出失敗:', error);
-      return { success: false, message: '登出過程中發生錯誤' };
+      // 即使 API 失敗，也要清除本地狀態
+      localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+      localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+      setUser(null);
+      setIsAuthenticated(false);
+      setError(null);
+      return { success: true, message: '已成功登出' };
     } finally {
       setIsLoading(false);
     }
@@ -203,8 +211,8 @@ export const useAuth = () => {
       console.log('⏳ 設置 loading 狀態為 true');
       
       // 在實際應用中，這裡會調用後端 API 使所有該用戶的 token 失效
-      console.log('📞 調用 mockLogoutAllDevicesAPI，用戶ID:', user?.id);
-      const response = await mockLogoutAllDevicesAPI(user?.id);
+      console.log('📞 調用真實 API logoutAllDevicesAPI');
+      const response = await logoutAllDevicesAPI();
       console.log('📊 API 響應:', response);
       
       if (response.success) {
@@ -243,7 +251,7 @@ export const useAuth = () => {
       setError(null);
 
       // 模擬 API 調用
-      const response = await mockUpdateUserAPI(user.id, updates);
+      const response = await updateUserAPI(user.id, updates);
       
       if (response.success) {
         const updatedUser = { ...user, ...updates };
@@ -273,7 +281,7 @@ export const useAuth = () => {
       setError(null);
 
       // 模擬 API 調用
-      const response = await mockForgotPasswordAPI(email);
+      const response = await forgotPasswordAPI(email);
       
       return response;
     } catch (error) {
@@ -305,6 +313,127 @@ export const useAuth = () => {
     clearError: () => setError(null)
   };
 };
+
+// 真實 API 調用函數
+const apiRequest = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const token = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
+  
+  const defaultOptions = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    ...options,
+  };
+
+  try {
+    const response = await fetch(url, defaultOptions);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || '請求失敗');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API 請求失敗:', error);
+    throw error;
+  }
+};
+
+// 登入 API 調用
+const loginAPI = async (email, password) => {
+  try {
+    const response = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    return { success: true, data: response };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 註冊 API 調用
+const registerAPI = async (userData) => {
+  try {
+    const response = await apiRequest('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+    return { success: true, data: response };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 忘記密碼 API 調用
+const forgotPasswordAPI = async (email) => {
+  try {
+    const response = await apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    return { success: true, message: response.message };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 更新用戶資料 API 調用
+const updateUserAPI = async (userId, updates) => {
+  try {
+    const response = await apiRequest(`/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return { success: true, data: response };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 驗證 Token API 調用
+const verifyTokenAPI = async (token) => {
+  try {
+    const response = await apiRequest('/auth/verify', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return { success: true, data: response };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 登出 API 調用
+const logoutAPI = async () => {
+  try {
+    const response = await apiRequest('/auth/logout', {
+      method: 'POST',
+    });
+    return { success: true, message: response.message };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// 登出所有設備 API 調用
+const logoutAllDevicesAPI = async () => {
+  try {
+    const response = await apiRequest('/auth/logout-all', {
+      method: 'POST',
+    });
+    return { success: true, message: response.message };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ===========================================
+// 以下是模擬 API 函數 (開發階段備用)
+// ===========================================
 
 // 模擬 API 函數
 const mockLoginAPI = async (email, password) => {

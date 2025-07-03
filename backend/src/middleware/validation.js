@@ -3,15 +3,21 @@ import Joi from 'joi';
 // 驗證中間件生成器
 const validate = (schema) => {
   return (req, res, next) => {
-    const { error } = schema.validate(req.body);
+    const { error } = schema.validate(req.body, { abortEarly: false });
     
     if (error) {
+      console.log('🚨 資料驗證失敗:', {
+        body: req.body,
+        errors: error.details
+      });
+      
       return res.status(400).json({
         success: false,
         message: '資料驗證失敗',
-        errors: error.details.map(detail => ({
+        details: error.details.map(detail => ({
           field: detail.path.join('.'),
-          message: detail.message
+          message: detail.message,
+          value: detail.context?.value
         }))
       });
     }
@@ -61,6 +67,7 @@ export const projectValidation = {
     clientId: Joi.string().optional(),
     hourlyRate: Joi.number().min(0).optional(),
     color: Joi.string().pattern(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
+    status: Joi.string().valid('ACTIVE', 'COMPLETED', 'PAUSED', 'CANCELLED', 'active', 'completed', 'paused', 'cancelled').optional(),
     deadline: Joi.date().optional()
   })),
   
@@ -70,7 +77,7 @@ export const projectValidation = {
     clientId: Joi.string().optional(),
     hourlyRate: Joi.number().min(0).optional(),
     color: Joi.string().pattern(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
-    status: Joi.string().valid('ACTIVE', 'COMPLETED', 'PAUSED', 'CANCELLED').optional(),
+    status: Joi.string().valid('ACTIVE', 'COMPLETED', 'PAUSED', 'CANCELLED', 'active', 'completed', 'paused', 'cancelled').optional(),
     deadline: Joi.date().optional()
   }))
 };
