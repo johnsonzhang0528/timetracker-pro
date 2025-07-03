@@ -18,6 +18,7 @@ import clientRoutes from './routes/clients.js';
 import timeEntryRoutes from './routes/timeEntries.js';
 import invoiceRoutes from './routes/invoices.js';
 import reportRoutes from './routes/reports.js';
+import adminRoutes from './routes/admin.js';
 
 // 導入中間件
 import { errorHandler } from './middleware/errorHandler.js';
@@ -81,6 +82,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/time-entries', timeEntryRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 靜態檔案 (上傳的檔案)
 app.use('/uploads', express.static('uploads'));

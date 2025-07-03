@@ -4,7 +4,15 @@ import App from './App.jsx'
 import { AuthProvider } from './Hooks/useAuth.js'
 import { APIProvider } from './contexts/APIContext.jsx'
 import APIErrorHandler from './Components/APIErrorHandler.jsx'
+import ErrorMonitor from './Utils/ErrorMonitor.js'
 import './styles.css'
+
+// 初始化錯誤監控
+const errorMonitor = new ErrorMonitor();
+if (import.meta.env.DEV) {
+  errorMonitor.startFullMonitoring();
+  window.errorMonitor = errorMonitor;
+}
 
 // 錯誤邊界組件
 class ErrorBoundary extends React.Component {

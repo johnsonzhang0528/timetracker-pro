@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from './Components/Navigation';
 import TimeTracker from './Components/TimeTracker';
 import ProjectManager from './Components/ProjectManager';
@@ -7,6 +7,7 @@ import Invoice from './Components/Invoice';
 import Auth from './Components/Auth';
 import UserProfile from './Components/UserProfile';
 import AuthGuard from './Components/AuthGuard';
+import DebugPanel from './Components/DebugPanel';
 import { useTimeTracker, useLocalStorage } from './Hooks/useTimeTracker';
 import { useTimeTrackerAPI } from './Hooks/useTimeTrackerAPI';
 import { useAuthContext } from './Hooks/useAuth';
@@ -57,6 +58,25 @@ const App = () => {
     color: '#3b82f6' 
   });
   const [formErrors, setFormErrors] = useState({});
+  
+  // 除錯面板狀態
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
+  // 開發模式快捷鍵
+  useEffect(() => {
+    if (API_CONFIG.debug) {
+      const handleKeyDown = (e) => {
+        // Ctrl/Cmd + Shift + D: 開啟除錯面板
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+          e.preventDefault();
+          setShowDebugPanel(true);
+        }
+      };
+
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, []);
 
   // 新增專案函數
   const addProject = () => {
@@ -247,10 +267,25 @@ const App = () => {
         {/* 底部安全區域 */}
         <div className="safe-area desktop-hidden"></div>
         
+        {/* 除錯面板 */}
+        {showDebugPanel && (
+          <DebugPanel 
+            isOpen={showDebugPanel} 
+            onClose={() => setShowDebugPanel(false)} 
+          />
+        )}
+        
         {/* 無障礙輔助 */}
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {isTracking ? '計時器正在運行' : '計時器已停止'}
         </div>
+        
+        {/* 開發模式提示 */}
+        {API_CONFIG.debug && (
+          <div className="fixed bottom-4 left-4 bg-gray-800 text-white px-3 py-2 rounded-lg text-xs opacity-75">
+            按 Ctrl+Shift+D 開啟除錯面板
+          </div>
+        )}
       </div>
     </AuthGuard>
   );

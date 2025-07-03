@@ -77,3 +77,7 @@ export const authorize = (requiredPlan) => {
     next();
   };
 };
+
+// 別名導出，便於使用
+export const auth = authenticate;
+export { authenticate as default };
