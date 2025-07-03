@@ -90,12 +90,19 @@ temp/
 # TernJS port file
 .tern-port
 
+<<<<<<< Updated upstream
 # Backend specific files
+=======
+# Backend specific
+>>>>>>> Stashed changes
 backend/logs/
 backend/uploads/
 backend/dev.db*
 backend/prisma/dev.db*
+<<<<<<< Updated upstream
 backend/.env
+=======
+>>>>>>> Stashed changes
 
 # Database files
 *.db
@@ -104,6 +111,7 @@ backend/.env
 
 # Docker
 docker-compose.override.yml
+<<<<<<< Updated upstream
 .dockerignore
 
 # Prisma
@@ -113,3 +121,5 @@ prisma/migrations/*/migration.sql
 backend/node_modules/
 backend/dist/
 backend/coverage/
+=======
+>>>>>>> Stashed changes

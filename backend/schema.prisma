@@ -1,0 +1,171 @@
+// TimeTracker Pro 資料庫設計
+// 使用 Prisma ORM 定義資料模型
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// 用戶資料表
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String?
+  avatar      String?
+  plan        String   @default("FREE")  // 替代 UserPlan enum
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastLoginAt DateTime?
+
+  // 關聯關係
+  settings     UserSettings?
+  projects     Project[]
+  clients      Client[]
+  timeEntries  TimeEntry[]
+  invoices     Invoice[]
+  
+  @@map("users")
+}
+
+// 用戶設定表
+model UserSettings {
+  id           String @id @default(cuid())
+  userId       String @unique
+  timezone     String @default("Asia/Taipei")
+  currency     String @default("TWD")
+  hourlyRate   Float  @default(500)
+  
+  // 工作時間設定 (使用 String 替代 Json)
+  workingHoursStart String @default("09:00")
+  workingHoursEnd   String @default("18:00")
+  
+  // 通知設定 (使用 Boolean 欄位替代 Json)
+  notificationBreak    Boolean @default(true)
+  notificationOvertime Boolean @default(true)
+  notificationInvoice  Boolean @default(true)
+  
+  // 發票設定 (使用 String 欄位替代 Json)
+  invoiceCompany String @default("")
+  invoiceAddress String @default("")
+  invoiceTax     String @default("")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_settings")
+}
+
+// 客戶資料表
+model Client {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  email       String?
+  phone       String?
+  company     String?
+  address     String?
+  taxNumber   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 關聯關係
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects    Project[]
+  invoices    Invoice[]
+  
+  @@map("clients")
+}
+
+// 專案資料表
+model Project {
+  id          String        @id @default(cuid())
+  userId      String
+  clientId    String?
+  name        String
+  description String?
+  hourlyRate  Float?
+  color       String        @default("#3B82F6")
+  status      String        @default("ACTIVE")  // 替代 ProjectStatus enum
+  deadline    DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // 關聯關係
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  timeEntries TimeEntry[]
+  
+  @@map("projects")
+}
+
+// 時間追蹤記錄表
+model TimeEntry {
+  id          String    @id @default(cuid())
+  userId      String
+  projectId   String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?      // 秒數
+  hourlyRate  Float?
+  amount      Float?    // 計算金額
+  isInvoiced  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 關聯關係
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@map("time_entries")
+}
+
+// 發票資料表
+model Invoice {
+  id          String        @id @default(cuid())
+  userId      String
+  clientId    String
+  number      String        @unique
+  title       String
+  description String?
+  subtotal    Float
+  tax         Float         @default(0)
+  total       Float
+  status      String        @default("DRAFT")   // 替代 InvoiceStatus enum
+  issueDate   DateTime
+  dueDate     DateTime?
+  paidDate    DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // 關聯關係
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items       InvoiceItem[]
+  
+  @@map("invoices")
+}
+
+// 發票項目表
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float
+  rate        Float
+  amount      Float
+  createdAt   DateTime @default(now())
+
+  // 關聯關係
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  @@map("invoice_items")
+}
+
+// 移除 Enum 定義，改用 String 類型並在程式碼中驗證
