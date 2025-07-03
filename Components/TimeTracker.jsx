@@ -29,15 +29,15 @@ const TimeTracker = ({
   const todayEntries = timeEntries.filter(entry => 
     entry.date === new Date().toISOString().split('T')[0]
   );
-  const todayTotal = todayEntries.reduce((sum, entry) => sum + entry.amount, 0);
-  const todayHours = todayEntries.reduce((sum, entry) => sum + entry.duration, 0);
+  const todayTotal = todayEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+  const todayHours = todayEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekEntries = timeEntries.filter(entry => 
     new Date(entry.date) >= weekStart
   );
-  const weekTotal = weekEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const weekTotal = weekEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
 
   // 專案提示
   useEffect(() => {
@@ -130,7 +130,7 @@ const TimeTracker = ({
               <option value="">請選擇專案...</option>
               {projects.map(project => (
                 <option key={project.id} value={project.id}>
-                  {project.name} - {project.client} ({formatCurrency(project.rate)}/小時)
+                  {project.name} - {project.client?.name || project.client?.company || 'Unknown Client'} ({formatCurrency(project.rate || project.hourlyRate)}/小時)
                 </option>
               ))}
             </select>
@@ -309,7 +309,7 @@ const TimeTracker = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <div style={{ fontWeight: '500', color: 'var(--gray-900)' }}>
-                      {entry.project}
+                      {entry.project?.name || entry.project || 'Unknown Project'}
                     </div>
                     <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
                       {entry.description || '無描述'} • {entry.date}

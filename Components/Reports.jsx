@@ -46,27 +46,30 @@ const Reports = () => {
     return timeEntries.filter(entry => {
       const entryDate = new Date(entry.date);
       const matchesPeriod = entryDate >= startDate;
-      const matchesProject = selectedProject === 'all' || entry.project === selectedProject;
+      const projectName = entry.project?.name || entry.project;
+      const matchesProject = selectedProject === 'all' || projectName === selectedProject;
       return matchesPeriod && matchesProject;
     });
   }, [timeEntries, selectedPeriod, selectedProject]);
 
   // 計算統計資料
   const stats = useMemo(() => {
-    const totalHours = filteredEntries.reduce((sum, entry) => sum + entry.duration, 0);
+    const totalHours = filteredEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
     const totalEarnings = filteredEntries.reduce((sum, entry) => {
-      const project = projects.find(p => p.name === entry.project);
-      return sum + (entry.duration * (project?.hourlyRate || 0));
+      const projectName = entry.project?.name || entry.project;
+      const project = projects.find(p => p.name === projectName);
+      return sum + ((entry.duration || 0) * (project?.hourlyRate || 0));
     }, 0);
 
     const projectStats = filteredEntries.reduce((acc, entry) => {
-      if (!acc[entry.project]) {
-        acc[entry.project] = { hours: 0, earnings: 0 };
+      const projectName = entry.project?.name || entry.project || 'Unknown Project';
+      if (!acc[projectName]) {
+        acc[projectName] = { hours: 0, earnings: 0 };
       }
-      acc[entry.project].hours += entry.duration;
+      acc[projectName].hours += entry.duration || 0;
       
-      const project = projects.find(p => p.name === entry.project);
-      acc[entry.project].earnings += entry.duration * (project?.hourlyRate || 0);
+      const project = projects.find(p => p.name === projectName);
+      acc[projectName].earnings += (entry.duration || 0) * (project?.hourlyRate || 0);
       
       return acc;
     }, {});
@@ -282,13 +285,14 @@ const Reports = () => {
                 {filteredEntries
                   .sort((a, b) => new Date(b.date) - new Date(a.date))
                   .map((entry, index) => {
-                    const project = projects.find(p => p.name === entry.project);
-                    const earnings = entry.duration * (project?.hourlyRate || 0);
+                    const projectName = entry.project?.name || entry.project;
+                    const project = projects.find(p => p.name === projectName);
+                    const earnings = (entry.duration || 0) * (project?.hourlyRate || 0);
                     
                     return (
                       <tr key={index}>
                         <td>{formatDate(entry.date)}</td>
-                        <td>{entry.project}</td>
+                        <td>{entry.project?.name || entry.project || 'Unknown Project'}</td>
                         <td>{entry.task || '-'}</td>
                         <td>{formatHours(entry.duration)}</td>
                         <td>${earnings.toFixed(0)}</td>

@@ -7,18 +7,31 @@ import Invoice from './Components/Invoice';
 import Auth from './Components/Auth';
 import UserProfile from './Components/UserProfile';
 import { useTimeTracker, useLocalStorage } from './Hooks/useTimeTracker';
+import { useTimeTrackerAPI } from './Hooks/useTimeTrackerAPI';
 import { useAuthContext } from './Hooks/useAuth';
+import { useAPIStatus } from './contexts/APIContext';
+import { API_CONFIG } from './config/api';
 import { TABS } from './Constants';
 
 const App = () => {
   const { isAuthenticated, isLoading: authLoading, user } = useAuthContext();
+  const { useAPI } = useAPIStatus();
   
   // 調試信息
   console.log('🏠 App 組件渲染 - 認證狀態:', {
     isAuthenticated,
     authLoading,
-    user: user ? user.name : 'null'
+    user: user ? user.name : 'null',
+    useAPI,
+    API_CONFIG_useAPI: API_CONFIG.useAPI
   });
+  
+  // 始終初始化兩個 Hook，但只使用其中一個
+  const timeTrackerHookLocal = useTimeTracker();
+  const timeTrackerHookAPI = useTimeTrackerAPI();
+  
+  // 根據 API 配置選擇使用的 Hook
+  const timeTrackerHook = useAPI ? timeTrackerHookAPI : timeTrackerHookLocal;
   
   // 使用自定義 Hooks
   const {
@@ -36,7 +49,7 @@ const App = () => {
     setActiveTab,
     setProjects,
     hideToast
-  } = useTimeTracker();
+  } = timeTrackerHook;
 
   // 專案管理狀態
   const [showNewProject, setShowNewProject] = useState(false);

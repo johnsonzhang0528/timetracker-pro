@@ -55,7 +55,8 @@ const Invoice = () => {
 
     return timeEntries.filter(entry => {
       const entryDate = new Date(entry.date);
-      return entry.project === selectedProject && 
+      const projectName = entry.project?.name || entry.project;
+      return projectName === selectedProject && 
              entryDate >= startDate && 
              entryDate <= endDate;
     });

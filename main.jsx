@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AuthProvider } from './Hooks/useAuth.js'
+import { APIProvider } from './contexts/APIContext.jsx'
 import './styles.css'
 
 // 錯誤邊界組件
@@ -74,18 +75,51 @@ if (import.meta.env.DEV) {
 }
 
 // 建立 React 根元素
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const initializeApp = () => {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    console.error('找不到根元素 #root');
+    return;
+  }
+  
+  const root = ReactDOM.createRoot(rootElement);
 
-// 渲染應用程式
-root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+  // 渲染應用程式
+  root.render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <APIProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </APIProvider>
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
+};
+
+// 等待 DOM 載入完成
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
+}
+
+// 全域錯誤處理
+window.addEventListener('error', (event) => {
+  console.error('全域錯誤:', event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('❌ 未處理的 Promise 拒絕:', event.reason);
+  // 防止錯誤顯示在控制台
+  event.preventDefault();
+  
+  // 如果是網絡錯誤，可以顯示友好的錯誤信息
+  if (event.reason?.message?.includes('fetch')) {
+    console.warn('🌐 網絡請求失敗，請檢查連接');
+  }
+});
 
 // 註冊 Service Worker (生產環境)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

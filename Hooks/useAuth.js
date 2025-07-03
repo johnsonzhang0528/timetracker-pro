@@ -38,14 +38,6 @@ export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState(null);
 
-  // 調試: 監控狀態變化
-  console.log('🔐 useAuth 狀態:', {
-    isAuthenticated,
-    isLoading,
-    user: user ? user.name : 'null',
-    error
-  });
-
   // 初始化時檢查登入狀態
   useEffect(() => {
     checkAuthStatus();
@@ -68,7 +60,11 @@ export const useAuth = () => {
           setIsAuthenticated(true);
         } else {
           // Token 無效，清除本地資料
-          await logout();
+          localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+          localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+          localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+          setUser(null);
+          setIsAuthenticated(false);
         }
       }
     } catch (error) {
@@ -92,22 +88,16 @@ export const useAuth = () => {
 
   // 登入
   const login = useCallback(async (email, password, rememberMe = false) => {
-    console.log('🔐 開始登入流程:', email);
-    
     try {
       setIsLoading(true);
       setError(null);
 
-      console.log('📡 調用真實 API...');
       // 調用真實 API
       const response = await loginAPI(email, password);
-      
-      console.log('📬 API 響應:', response);
       
       if (response.success) {
         const { user: userData, accessToken, refreshToken } = response.data;
         
-        console.log('💾 儲存認證資料到 localStorage...');
         // 儲存認證資料
         localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, accessToken);
         localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(userData));
@@ -116,14 +106,11 @@ export const useAuth = () => {
           localStorage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
         }
 
-        console.log('🏠 更新用戶狀態...');
         setUser(userData);
         setIsAuthenticated(true);
         
-        console.log('✅ 登入完成！用戶:', userData.name);
         return { success: true, message: '登入成功' };
       } else {
-        console.error('❌ 登入失敗:', response.message);
         setError(response.message);
         return { success: false, message: response.message };
       }
@@ -205,7 +192,6 @@ export const useAuth = () => {
 
   // 登出所有設備
   const logoutAllDevices = useCallback(async () => {
-    console.log('🔐 logoutAllDevices 函數開始執行');
     try {
       setIsLoading(true);
       console.log('⏳ 設置 loading 狀態為 true');
@@ -329,15 +315,30 @@ const apiRequest = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, defaultOptions);
-    const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || '請求失敗');
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        // 如果無法解析 JSON，使用 HTTP 狀態信息
+      }
+      
+      throw new Error(errorMessage);
     }
     
+    const data = await response.json();
     return data;
   } catch (error) {
-    console.error('API 請求失敗:', error);
+    console.error('❌ API 請求失敗:', error);
+    
+    // 處理網絡錯誤
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('無法連接到服務器，請檢查網絡連接');
+    }
+    
     throw error;
   }
 };
@@ -349,7 +350,16 @@ const loginAPI = async (email, password) => {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    return { success: true, data: response };
+    
+    // 後端返回的格式：{ success: true, data: { user, accessToken, refreshToken } }
+    return { 
+      success: true, 
+      data: {
+        user: response.data.user,
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken
+      }
+    };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -362,7 +372,15 @@ const registerAPI = async (userData) => {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    return { success: true, data: response };
+    
+    return { 
+      success: true, 
+      data: {
+        user: response.data.user,
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken
+      }
+    };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -371,11 +389,8 @@ const registerAPI = async (userData) => {
 // 忘記密碼 API 調用
 const forgotPasswordAPI = async (email) => {
   try {
-    const response = await apiRequest('/auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
-    return { success: true, message: response.message };
+    // 暫時返回功能未實現的錯誤
+    return { success: false, message: '密碼重設功能暫時未實現，請聯繫管理員' };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -384,11 +399,12 @@ const forgotPasswordAPI = async (email) => {
 // 更新用戶資料 API 調用
 const updateUserAPI = async (userId, updates) => {
   try {
-    const response = await apiRequest(`/users/${userId}`, {
+    const response = await apiRequest('/users/profile', {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
-    return { success: true, data: response };
+    
+    return { success: true, data: response.data };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -401,7 +417,11 @@ const verifyTokenAPI = async (token) => {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
     });
-    return { success: true, data: response };
+    
+    return { 
+      success: true, 
+      data: response.data 
+    };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -422,10 +442,11 @@ const logoutAPI = async () => {
 // 登出所有設備 API 調用
 const logoutAllDevicesAPI = async () => {
   try {
-    const response = await apiRequest('/auth/logout-all', {
+    // 目前使用一般登出，未來可以擴展為真正的登出所有設備
+    const response = await apiRequest('/auth/logout', {
       method: 'POST',
     });
-    return { success: true, message: response.message };
+    return { success: true, message: response.message || '已成功登出所有設備' };
   } catch (error) {
     return { success: false, message: error.message };
   }

@@ -18,12 +18,26 @@ export const generateRandomColor = () => {
 
 // 格式化貨幣
 export const formatCurrency = (amount) => {
-  return `NT$ ${amount.toLocaleString()}`;
+  // 處理 null, undefined, 或非數字的情況
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    return 'NT$ 0';
+  }
+  
+  // 確保 amount 是數字
+  const numAmount = Number(amount);
+  return `NT$ ${numAmount.toLocaleString()}`;
 };
 
 // 計算總收入
 export const calculateTotalEarnings = (timeEntries) => {
-  return timeEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  if (!timeEntries || timeEntries.length === 0) {
+    return 0;
+  }
+  
+  return timeEntries.reduce((sum, entry) => {
+    const amount = entry.amount || 0;
+    return sum + amount;
+  }, 0);
 };
 
 // 計算總工作時數

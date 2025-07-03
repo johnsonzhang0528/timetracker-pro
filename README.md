@@ -19,13 +19,26 @@ TimeTracker Pro/
 │   ├── Reports.jsx             # 報表分析
 │   ├── Invoice.jsx             # 發票生成
 │   ├── Navigation.jsx          # 導航組件
+│   ├── Auth.jsx                # 認證組件
+│   ├── UserProfile.jsx         # 用戶資料組件
 │   └── Toast.jsx               # 通知組件
 ├── 🔧 Hooks/                   # 自定義 React Hooks
-│   └── useTimeTracker.js       # 時間追蹤邏輯
-├── 🛠️ Utils/                   # 工具函數
+│   ├── useTimeTracker.js       # 時間追蹤邏輯 (離線版)
+│   ├── useTimeTrackerAPI.js    # 時間追蹤邏輯 (API版)
+│   ├── useAuth.js              # 認證功能
+│   └── useAPI.js               # API 請求處理
+├── 🌐 config/                  # 配置文件
+│   └── api.js                  # API 配置
+├── � contexts/                # React Context
+│   └── APIContext.jsx          # API 狀態管理
+├── �🛠️ Utils/                   # 工具函數
 │   └── helpers.js              # 格式化和計算函數
-└── ⚙️ Constants/               # 常數定義
-    └── index.js                # 應用程式常數
+├── ⚙️ Constants/               # 常數定義
+│   └── index.js                # 應用程式常數
+└── 🖥️ backend/                 # 後端服務
+    ├── src/                    # 源代碼
+    ├── package.json            # 後端依賴
+    └── schema.prisma           # 資料庫模型
 ```
 
 ## 功能特色
