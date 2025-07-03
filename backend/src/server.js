@@ -79,7 +79,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/clients', clientRoutes);
-app.use('/api/time-entries', timeEntryRoutes);
+app.use('/api/time-entries', timeEntryRoutes); // 確保時間記錄路由正確註冊
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);

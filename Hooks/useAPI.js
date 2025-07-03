@@ -80,8 +80,11 @@ const apiRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem('timetracker_auth_token');
   const requestKey = `${options.method || 'GET'}_${endpoint}_${JSON.stringify(options.body || '')}`;
   
+  console.log(`🌐 API 請求: ${options.method || 'GET'} ${endpoint}`, token ? '帶令牌' : '無令牌');
+  
   // 如果沒有 token 且需要認證的端點，直接拋出錯誤
   if (!token && !endpoint.includes('/auth/') && !endpoint.includes('/health')) {
+    console.error('🔒 未找到認證令牌，請先登入');
     throw new Error('未找到認證令牌，請先登入');
   }
   
@@ -441,7 +444,10 @@ export const useTimeTrackingAPI = () => {
       setLoading(true);
       setError(null);
       
+      // 確保使用正確的端點路徑
+      console.log('正在請求活動計時...');
       const response = await apiRequest('/time-entries/active');
+      console.log('活動計時響應:', response);
       
       if (response.success) {
         setActiveEntry(response.data);
@@ -452,6 +458,7 @@ export const useTimeTrackingAPI = () => {
         return { success: true, data: null };
       }
     } catch (err) {
+      console.error('獲取活動計時失敗:', err);
       setError(err.message);
       return { success: false, message: err.message };
     } finally {

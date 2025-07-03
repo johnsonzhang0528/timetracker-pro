@@ -62,6 +62,33 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 獲取當前計時狀態 - 確保此路由在 /:id 路由之前定義
+router.get('/active', async (req, res) => {
+  try {
+    console.log('Accessing /active route with user:', req.user?.id);
+    const activeEntry = await prisma.timeEntry.findFirst({
+      where: {
+        userId: req.user.id,
+        endTime: null
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            color: true
+          }
+        }
+      }
+    });
+    
+    res.json(formatSuccessResponse(activeEntry));
+  } catch (error) {
+    logger.error('獲取當前計時狀態失敗:', error);
+    res.status(500).json(formatErrorResponse('獲取當前計時狀態失敗'));
+  }
+});
+
 // 獲取單個時間記錄
 router.get('/:id', async (req, res) => {
   try {
@@ -319,32 +346,6 @@ router.post('/stop/:id', async (req, res) => {
   } catch (error) {
     logger.error('停止計時失敗:', error);
     res.status(500).json(formatErrorResponse('停止計時失敗'));
-  }
-});
-
-// 獲取當前計時狀態
-router.get('/active', async (req, res) => {
-  try {
-    const activeEntry = await prisma.timeEntry.findFirst({
-      where: {
-        userId: req.user.id,
-        endTime: null
-      },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-            color: true
-          }
-        }
-      }
-    });
-    
-    res.json(formatSuccessResponse(activeEntry));
-  } catch (error) {
-    logger.error('獲取當前計時狀態失敗:', error);
-    res.status(500).json(formatErrorResponse('獲取當前計時狀態失敗'));
   }
 });
 

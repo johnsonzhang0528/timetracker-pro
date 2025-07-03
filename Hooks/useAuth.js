@@ -73,16 +73,24 @@ const MOCK_USERS = [
 // 驗證 Token API 調用
 const verifyTokenAPI = async (token) => {
   try {
+    console.log('🔒 驗證令牌...');
     const response = await apiRequest('/auth/verify', {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
     });
     
+    console.log('✅ 令牌有效:', response);
     return { 
       success: true, 
       data: response.data 
     };
   } catch (error) {
+    console.error('❌ 令牌驗證失敗:', error.message);
+    // 令牌無效時清除本地存儲
+    localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+    
     return { success: false, message: error.message };
   }
 };

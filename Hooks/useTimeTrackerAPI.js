@@ -51,6 +51,18 @@ export const useTimeTrackerAPI = () => {
     dataLoadingRef.current = true;
     
     try {
+      console.log('🔍 開始初始化數據載入...');
+      
+      // 首先檢查活動計時 - 這是最優先的
+      if (!activeEntry && !timeAPI.loading) {
+        console.log('📌 優先檢查活動計時狀態');
+        try {
+          await timeAPI.getActiveTimer();
+        } catch (error) {
+          console.warn('獲取活動計時失敗，但將繼續載入其他數據:', error);
+        }
+      }
+      
       // 使用去重的請求載入所有數據
       const loadPromises = [];
       
@@ -60,9 +72,6 @@ export const useTimeTrackerAPI = () => {
       }
       if (timeEntries.length === 0 && !timeAPI.loading) {
         loadPromises.push(timeAPI.fetchTimeEntries());
-      }
-      if (!activeEntry && !timeAPI.loading) {
-        loadPromises.push(timeAPI.getActiveTimer());
       }
       if (clients.length === 0 && !clientAPI.loading) {
         loadPromises.push(clientAPI.fetchClients());
