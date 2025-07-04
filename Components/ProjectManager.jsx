@@ -224,11 +224,69 @@ const ProjectManager = () => {
           projects.map(project => {
             const statusInfo = getStatusBadge(project.status);
             const progress = calculateProgress(project);
+            const createdDate = new Date(project.createdAt).toLocaleDateString('zh-TW');
             
             return (
               <div key={project.id} className="project-card">
-                <div className="project-header">
-                  <h3>{project.name}</h3>
+                <div className="project-card-top">
+                  <div className={`status-indicator status-${project.status}`}></div>
+                  <div className="project-header">
+                    <h3 className="project-title">{project.name}</h3>
+                    <div className={`status-badge ${statusInfo.class}`}>
+                      {statusInfo.text}
+                    </div>
+                  </div>
+                  
+                  {project.description && (
+                    <p className="project-description">{project.description}</p>
+                  )}
+                </div>
+                
+                <div className="project-card-content">
+                  <div className="project-stats">
+                    <div className="project-stat">
+                      <div className="stat-icon">💰</div>
+                      <span className="stat-label">時薪</span>
+                      <span className="stat-value">${project.hourlyRate}</span>
+                    </div>
+                    <div className="project-stat">
+                      <div className="stat-icon">⏱️</div>
+                      <span className="stat-label">已工作</span>
+                      <span className="stat-value">{project.totalHours.toFixed(1)}h</span>
+                    </div>
+                    <div className="project-stat">
+                      <div className="stat-icon">📊</div>
+                      <span className="stat-label">預估</span>
+                      <span className="stat-value">{project.estimatedHours}h</span>
+                    </div>
+                    <div className="project-stat">
+                      <div className="stat-icon">💵</div>
+                      <span className="stat-label">收益</span>
+                      <span className="stat-value">${(project.totalHours * project.hourlyRate).toFixed(0)}</span>
+                    </div>
+                  </div>
+                  
+                  {project.estimatedHours > 0 && (
+                    <div className="progress-container">
+                      <div className="progress-label">
+                        <span>進度</span>
+                        <span>{progress.toFixed(0)}%</span>
+                      </div>
+                      <div className="progress-bar">
+                        <div 
+                          className={`progress-fill progress-fill-${project.status}`}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="project-card-footer">
+                  <div className="project-date">
+                    <span className="date-icon">📅</span>
+                    <span>建立於 {createdDate}</span>
+                  </div>
                   <div className="project-actions">
                     <select
                       value={project.status}
@@ -247,48 +305,6 @@ const ProjectManager = () => {
                     </button>
                   </div>
                 </div>
-                
-                <div className={`status-badge ${statusInfo.class}`}>
-                  {statusInfo.text}
-                </div>
-                
-                {project.description && (
-                  <p className="project-description">{project.description}</p>
-                )}
-                
-                <div className="project-stats">
-                  <div className="project-stat">
-                    <span className="stat-label">時薪</span>
-                    <span className="stat-value">${project.hourlyRate}</span>
-                  </div>
-                  <div className="project-stat">
-                    <span className="stat-label">已工作</span>
-                    <span className="stat-value">{project.totalHours.toFixed(1)}h</span>
-                  </div>
-                  <div className="project-stat">
-                    <span className="stat-label">預估</span>
-                    <span className="stat-value">{project.estimatedHours}h</span>
-                  </div>
-                  <div className="project-stat">
-                    <span className="stat-label">收益</span>
-                    <span className="stat-value">${(project.totalHours * project.hourlyRate).toFixed(0)}</span>
-                  </div>
-                </div>
-                
-                {project.estimatedHours > 0 && (
-                  <div className="progress-container">
-                    <div className="progress-label">
-                      <span>進度</span>
-                      <span>{progress.toFixed(0)}%</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })
