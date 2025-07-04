@@ -28,10 +28,10 @@ export const API_CONFIG = {
   // 功能開關
   features: {
     // 是否啟用離線模式
-    offlineMode: false,
+    offlineMode: import.meta.env.VITE_OFFLINE_MODE === 'true' || true,
     
     // 是否啟用數據同步
-    dataSync: true,
+    dataSync: import.meta.env.VITE_DATA_SYNC === 'true' || true,
     
     // 是否啟用推播通知
     notifications: false,

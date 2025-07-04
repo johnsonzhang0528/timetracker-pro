@@ -138,14 +138,25 @@ const registerAPI = async (userData) => {
   }
 };
 
-// 登出 API 調用
-const logoutAPI = async () => {
+// 刷新令牌 API 調用
+const refreshTokenAPI = async (refreshToken) => {
   try {
-    const response = await apiRequest('/auth/logout', {
+    console.log('🔄 嘗試刷新令牌...');
+    const response = await apiRequest('/auth/refresh', {
       method: 'POST',
+      body: JSON.stringify({ refreshToken }),
     });
-    return { success: true, message: response.message };
+    
+    console.log('✅ 令牌刷新成功');
+    return { 
+      success: true, 
+      data: {
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken
+      }
+    };
   } catch (error) {
+    console.error('❌ 令牌刷新失敗:', error.message);
     return { success: false, message: error.message };
   }
 };
@@ -167,20 +178,59 @@ const useAuth = () => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
+      const refreshToken = localStorage.getItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
       const userData = localStorage.getItem(AUTH_STORAGE_KEYS.USER);
 
       if (token && userData) {
         try {
+          console.log('🔒 驗證現有令牌...');
           // 驗證 token 有效性 (真實 API)
           const tokenValidation = await verifyTokenAPI(token);
           
           if (tokenValidation.success) {
+            console.log('✅ 令牌有效，使用當前認證');
             const parsedUser = JSON.parse(userData);
             setUser(parsedUser);
             setIsAuthenticated(true);
+          } else if (refreshToken) {
+            console.log('🔄 令牌無效，嘗試使用刷新令牌...');
+            // 嘗試使用刷新令牌獲取新令牌
+            try {
+              const refreshResult = await refreshTokenAPI(refreshToken);
+              
+              if (refreshResult.success) {
+                console.log('✅ 令牌刷新成功，使用新認證');
+                // 更新本地存儲
+                localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, refreshResult.data.accessToken);
+                
+                if (refreshResult.data.refreshToken) {
+                  localStorage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, refreshResult.data.refreshToken);
+                }
+                
+                const parsedUser = JSON.parse(userData);
+                setUser(parsedUser);
+                setIsAuthenticated(true);
+              } else {
+                // 刷新失敗，清除本地資料
+                console.warn('❌ 令牌刷新失敗，清除本地認證資料');
+                localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+                localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+                localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+                setUser(null);
+                setIsAuthenticated(false);
+              }
+            } catch (refreshError) {
+              console.error('❌ 令牌刷新出錯:', refreshError);
+              // 刷新出錯，清除本地資料
+              localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+              localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
+              localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+              setUser(null);
+              setIsAuthenticated(false);
+            }
           } else {
-            // Token 無效，清除本地資料
-            console.warn('Token 驗證失敗，清除本地認證資料');
+            // Token 無效且沒有刷新令牌，清除本地資料
+            console.warn('❌ 令牌驗證失敗且無刷新令牌，清除本地認證資料');
             localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
             localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
             localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
@@ -189,14 +239,14 @@ const useAuth = () => {
           }
         } catch (apiError) {
           // API 不可用時，嘗試使用本地資料
-          console.warn('API 不可用，使用本地認證資料:', apiError.message);
+          console.warn('⚠️ API 不可用，使用本地認證資料:', apiError.message);
           try {
             const parsedUser = JSON.parse(userData);
             setUser(parsedUser);
             setIsAuthenticated(true);
           } catch (parseError) {
             // 本地資料也無效
-            console.error('本地資料解析失敗:', parseError);
+            console.error('❌ 本地資料解析失敗:', parseError);
             localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
             localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
             localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
@@ -206,11 +256,12 @@ const useAuth = () => {
         }
       } else {
         // 沒有認證資料
+        console.log('❓ 無認證資料');
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('檢查認證狀態失敗:', error);
+      console.error('❌ 檢查認證狀態失敗:', error);
       // 如果是 401 錯誤，清除認證資料
       if (error.message.includes('401')) {
         localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);

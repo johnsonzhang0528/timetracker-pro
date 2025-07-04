@@ -8,16 +8,20 @@ import Auth from './Components/Auth';
 import UserProfile from './Components/UserProfile';
 import AuthGuard from './Components/AuthGuard';
 import DebugPanel from './Components/DebugPanel';
+import SyncStatusIndicator from './Components/SyncStatusIndicator';
+import ConflictResolver from './Components/ConflictResolver';
 import { useTimeTracker, useLocalStorage } from './Hooks/useTimeTracker';
 import { useTimeTrackerAPI } from './Hooks/useTimeTrackerAPI';
 import { useAuthContext } from './Hooks/useAuth';
 import { useAPIStatus } from './contexts/APIContext';
 import { API_CONFIG } from './config/api';
-import { TABS } from './Constants';
+import { TABS, SYNC_CONSTANTS } from './Constants';
+import { apiClient } from './Utils/ApiClient';
+import { offlineSync } from './Utils/OfflineSync';
 
 const App = () => {
   const { isAuthenticated, isLoading: authLoading, user } = useAuthContext();
-  const { useAPI } = useAPIStatus();
+  const { useAPI, syncStatus } = useAPIStatus();
   
   // 調試信息
   console.log('🏠 App 組件渲染 - 認證狀態:', {
@@ -25,7 +29,8 @@ const App = () => {
     authLoading,
     user: user ? user.name : 'null',
     useAPI,
-    API_CONFIG_useAPI: API_CONFIG.useAPI
+    API_CONFIG_useAPI: API_CONFIG.useAPI,
+    syncStatus
   });
   
   // 根據 API 配置選擇使用的 Hook（避免同時初始化兩個 Hook）
@@ -43,6 +48,7 @@ const App = () => {
     startTracking,
     pauseTracking,
     stopTracking,
+    stopAndStartTracking,
     setSelectedProject: originalSetSelectedProject,
     setActiveTab,
     setProjects,
@@ -74,6 +80,42 @@ const App = () => {
   
   // 除錯面板狀態
   const [showDebugPanel, setShowDebugPanel] = useState(false);
+
+  // 離線同步初始化和自動同步
+  useEffect(() => {
+    if (isAuthenticated && API_CONFIG.features.offlineMode) {
+      console.log('🔄 離線同步功能已初始化');
+      
+      // 如果有未同步的操作且當前在線，嘗試自動同步
+      if (apiClient.isOnline() && API_CONFIG.features.dataSync) {
+        (async () => {
+          const pendingOps = offlineSync.getPendingOperations();
+          if (pendingOps.length > 0) {
+            console.log(`🔄 發現 ${pendingOps.length} 個待同步操作，嘗試自動同步`);
+            await apiClient.syncOfflineOperations();
+          }
+        })();
+      }
+    }
+  }, [isAuthenticated]);
+
+  // 定期同步檢查
+  useEffect(() => {
+    if (isAuthenticated && API_CONFIG.features.offlineMode && API_CONFIG.features.dataSync) {
+      // 每分鐘檢查一次未同步的操作
+      const syncInterval = setInterval(() => {
+        if (apiClient.isOnline()) {
+          const pendingOps = offlineSync.getPendingOperations();
+          if (pendingOps.length > 0) {
+            console.log(`🔄 定期同步：發現 ${pendingOps.length} 個待同步操作`);
+            apiClient.syncOfflineOperations();
+          }
+        }
+      }, SYNC_CONSTANTS.AUTO_SYNC_INTERVAL);
+      
+      return () => clearInterval(syncInterval);
+    }
+  }, [isAuthenticated]);
 
   // 開發模式快捷鍵
   useEffect(() => {
@@ -202,6 +244,7 @@ const App = () => {
             onStartTracking={startTracking}
             onPauseTracking={pauseTracking}
             onStopTracking={stopTracking}
+            onStopAndStartTracking={stopAndStartTracking}
             onProjectChange={setSelectedProject}
             setActiveTab={setActiveTab}
           />
@@ -241,6 +284,7 @@ const App = () => {
             onStartTracking={startTracking}
             onPauseTracking={pauseTracking}
             onStopTracking={stopTracking}
+            onStopAndStartTracking={stopAndStartTracking}
             onProjectChange={setSelectedProject}
             setActiveTab={setActiveTab}
           />
@@ -284,6 +328,12 @@ const App = () => {
             </div>
           </div>
         )}
+
+        {/* 同步狀態指示器 */}
+        {API_CONFIG.features.offlineMode && <SyncStatusIndicator />}
+        
+        {/* 衝突解決器 */}
+        {API_CONFIG.features.offlineMode && <ConflictResolver />}
 
         {/* 底部安全區域 */}
         <div className="safe-area desktop-hidden"></div>

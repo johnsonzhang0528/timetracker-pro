@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Square, Clock, TrendingUp, Target, DollarSign, Plus } from 'lucide-react';
+import { Play, Pause, Square, Clock, TrendingUp, Target, DollarSign, Plus, Cloud, CloudOff } from 'lucide-react';
 import { formatTime, calculateEarnings, formatCurrency } from '../Utils/helpers';
+import { useAPIStatus } from '../contexts/APIContext';
+import { SYNC_STATUS } from '../Utils/OfflineSync';
 
 const TimeTracker = ({
   isTracking,
@@ -11,10 +13,12 @@ const TimeTracker = ({
   onStartTracking,
   onPauseTracking,
   onStopTracking,
+  onStopAndStartTracking,
   onProjectChange,
   setActiveTab
 }) => {
   const [showProjectHint, setShowProjectHint] = useState(false);
+  const { apiStatus, useAPI, syncStatus, triggerSync } = useAPIStatus();
 
   // 檢查是否沒有專案
   const hasNoProjects = !projects || projects.length === 0;
@@ -88,12 +92,29 @@ const TimeTracker = ({
   }, [hasNoSelectedProject, projects.length]);
 
   // 處理計時操作
-  const handleStartTracking = () => {
+  const handleStartTracking = async () => {
     if (!selectedProject) {
       setShowProjectHint(true);
       return;
     }
-    onStartTracking();
+    
+    try {
+      const result = await onStartTracking();
+      
+      // 檢查是否返回特定錯誤：已有進行中的計時
+      if (result && !result.success && 
+          (result.message?.includes('已有正在進行的計時') || 
+           result.message?.includes('已有進行中的計時'))) {
+        
+        // 詢問用戶是否要停止當前計時並開始新的計時
+        if (window.confirm('已有正在進行的計時，是否要停止當前計時並開始新的計時？')) {
+          // 使用輔助函數停止當前計時並開始新的
+          onStopAndStartTracking(selectedProject.id);
+        }
+      }
+    } catch (error) {
+      console.error('開始計時操作失敗:', error);
+    }
   };
 
   const handleStopTracking = () => {
@@ -387,6 +408,84 @@ const TimeTracker = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 資料統計 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
+        <div className="border rounded-lg p-4 flex flex-col bg-white shadow-sm">
+          <div className="flex items-center mb-2">
+            <Clock size={16} className="text-blue-500 mr-2" />
+            <span className="text-gray-600 text-sm font-medium">今日工時</span>
+          </div>
+          <div className="text-xl font-bold">{formatTime(todayHours)}</div>
+        </div>
+        
+        <div className="border rounded-lg p-4 flex flex-col bg-white shadow-sm">
+          <div className="flex items-center mb-2">
+            <DollarSign size={16} className="text-green-500 mr-2" />
+            <span className="text-gray-600 text-sm font-medium">今日收入</span>
+          </div>
+          <div className="text-xl font-bold">{formatCurrency(todayTotal)}</div>
+        </div>
+        
+        <div className="border rounded-lg p-4 flex flex-col bg-white shadow-sm">
+          <div className="flex items-center mb-2">
+            <TrendingUp size={16} className="text-purple-500 mr-2" />
+            <span className="text-gray-600 text-sm font-medium">本週收入</span>
+          </div>
+          <div className="text-xl font-bold">{formatCurrency(weekTotal)}</div>
+        </div>
+      </div>
+      
+      {/* 同步狀態 */}
+      {useAPI && (
+        <div className="mt-6 border rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+          <div className="flex items-center">
+            {apiStatus === 'success' ? (
+              <Cloud size={16} className="text-green-500 mr-2" />
+            ) : (
+              <CloudOff size={16} className="text-orange-500 mr-2" />
+            )}
+            <span className="text-gray-600 text-sm">
+              {apiStatus === 'success' 
+                ? '資料同步已啟用' 
+                : '目前為離線模式'}
+            </span>
+            
+            {syncStatus === SYNC_STATUS.PENDING && (
+              <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                有待同步的資料
+              </span>
+            )}
+            
+            {syncStatus === SYNC_STATUS.SYNCING && (
+              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                正在同步資料...
+              </span>
+            )}
+            
+            {syncStatus === SYNC_STATUS.ERROR && (
+              <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                同步失敗
+              </span>
+            )}
+            
+            {syncStatus === SYNC_STATUS.CONFLICT && (
+              <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                發現資料衝突
+              </span>
+            )}
+          </div>
+          
+          {(syncStatus === SYNC_STATUS.PENDING || syncStatus === SYNC_STATUS.ERROR) && (
+            <button
+              onClick={triggerSync}
+              className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+            >
+              立即同步
+            </button>
+          )}
         </div>
       )}
 
