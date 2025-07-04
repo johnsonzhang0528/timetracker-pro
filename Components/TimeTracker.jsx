@@ -15,6 +15,7 @@ const TimeTracker = ({
   onStopTracking,
   onStopAndStartTracking,
   onProjectChange,
+  onReloadTimeEntries,
   setActiveTab
 }) => {
   const [showProjectHint, setShowProjectHint] = useState(false);
@@ -99,15 +100,95 @@ const TimeTracker = ({
     }
     
     try {
+      console.log('準備開始計時', { 
+        selectedProject, 
+        isTracking 
+      });
+      
+      // 首先檢查本地儲存狀態
+      const activeEntryInStorage = localStorage.getItem('timetracker_active_entry');
+      const isLocalTracking = localStorage.getItem('timetracker_is_tracking') === 'true';
+      
+      console.log('狀態檢查:', {
+        activeEntryInStorage: !!activeEntryInStorage,
+        isLocalTracking,
+        isTracking,
+        hasInconsistency: (activeEntryInStorage || isLocalTracking) && !isTracking
+      });
+      
+      // 檢查數據不一致情況：localStorage 顯示正在計時，但應用狀態顯示未計時
+      if ((activeEntryInStorage || isLocalTracking) && !isTracking) {
+        console.log('檢測到狀態不一致，等待 500ms 後再次檢查...');
+        
+        // 等待一小段時間，讓狀態有機會同步
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 重新檢查狀態
+        const activeEntryInStorageAfterDelay = localStorage.getItem('timetracker_active_entry');
+        const isLocalTrackingAfterDelay = localStorage.getItem('timetracker_is_tracking') === 'true';
+        
+        console.log('延遲後的狀態檢查:', {
+          activeEntryInStorageAfterDelay: !!activeEntryInStorageAfterDelay,
+          isLocalTrackingAfterDelay,
+          isTracking
+        });
+        
+        // 如果延遲後仍有狀態不一致，才提示用戶
+        if ((activeEntryInStorageAfterDelay || isLocalTrackingAfterDelay) && !isTracking) {
+          console.log('延遲後仍檢測到狀態不一致');
+          
+          // 提示用戶狀態不一致，並詢問如何處理
+          if (window.confirm('系統檢測到可能有未正確結束的計時，要清除本地計時狀態並開始新的計時嗎？')) {
+            // 清除本地儲存中的所有計時狀態
+            localStorage.removeItem('timetracker_active_entry');
+            localStorage.removeItem('timetracker_is_tracking');
+            localStorage.removeItem('timetracker_paused_entry');
+            localStorage.removeItem('timetracker_resumed');
+            console.log('已清除本地計時狀態，準備開始新計時');
+            
+            // 直接開始新計時
+            const result = await onStartTracking();
+            console.log('開始計時結果:', result);
+            return;
+          } else {
+            return; // 用戶取消，不執行任何操作
+          }
+        } else {
+          console.log('延遲後狀態已同步，繼續正常流程');
+        }
+      }
+      
+      // 正常情況：應用顯示正在計時，檢查是否需要停止當前計時
+      if (isTracking) {
+        // 詢問用戶是否要停止當前計時並開始新的計時
+        if (window.confirm('已有正在進行的計時，是否要停止當前計時並開始新的計時？')) {
+          // 使用輔助函數停止當前計時並開始新的
+          onStopAndStartTracking(selectedProject.id);
+          return;
+        } else {
+          return; // 用戶取消，不執行任何操作
+        }
+      }
+      
+      // 直接開始新計時
       const result = await onStartTracking();
+      console.log('開始計時結果:', result);
+      
+      // 記錄到本地儲存，標記正在計時狀態
+      if (result && result.success) {
+        localStorage.setItem('timetracker_is_tracking', 'true');
+      }
       
       // 檢查是否返回特定錯誤：已有進行中的計時
       if (result && !result.success && 
           (result.message?.includes('已有正在進行的計時') || 
            result.message?.includes('已有進行中的計時'))) {
         
+        // 嘗試自動修復狀態不一致問題
+        console.log('後端報告已有進行中的計時，但前端狀態不一致，嘗試修復');
+        
         // 詢問用戶是否要停止當前計時並開始新的計時
-        if (window.confirm('已有正在進行的計時，是否要停止當前計時並開始新的計時？')) {
+        if (window.confirm('伺服器報告已有正在進行的計時，是否要嘗試停止它並開始新的計時？')) {
           // 使用輔助函數停止當前計時並開始新的
           onStopAndStartTracking(selectedProject.id);
         }
@@ -119,7 +200,17 @@ const TimeTracker = ({
 
   const handleStopTracking = () => {
     if (window.confirm('確定要停止計時並保存記錄嗎？')) {
-      onStopTracking();
+      console.log('用戶確認停止計時');
+      
+      // 停止計時，並獲取回傳的新紀錄
+      onStopTracking().then(result => {
+        if (result && result.success && result.data) {
+          console.log('停止計時成功，新紀錄:', result.data);
+          // 如果這裡需要做特別處理，例如直接更新 UI 等
+        }
+      }).catch(err => {
+        console.error('停止計時錯誤:', err);
+      });
     }
   };
 
@@ -129,8 +220,94 @@ const TimeTracker = ({
     // 確保頂部顯示最近的記錄
     if (timeEntries.length > 0) {
       console.log('最新時間條目:', timeEntries[0]);
+    } else {
+      // 如果 timeEntries 為空，檢查 localStorage 是否有數據
+      try {
+        const entriesJson = localStorage.getItem('timetracker-time-entries');
+        if (entriesJson) {
+          const localEntries = JSON.parse(entriesJson);
+          if (localEntries.length > 0) {
+            console.log('timeEntries 為空但 localStorage 有記錄:', localEntries.length);
+            
+            // 使用新的 onReloadTimeEntries 函數而不是 onStopTracking
+            if (typeof onReloadTimeEntries === 'function') {
+              console.log('嘗試重新載入時間記錄');
+              setTimeout(() => {
+                onReloadTimeEntries();
+              }, 100);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('檢查 localStorage 時出錯:', err);
+      }
     }
-  }, [timeEntries]);
+  }, [timeEntries, onReloadTimeEntries]);
+  
+  // 監聽 timeentry_updated 事件和 localStorage 變化
+  useEffect(() => {
+    // 追蹤最後一次更新時間，避免過頻繁更新
+    let lastUpdateTime = 0;
+    
+    // 處理自定義事件 - 當新增時間記錄時觸發
+    const handleTimeEntryUpdated = () => {
+      // 防抖處理 - 避免短時間內多次觸發
+      const now = Date.now();
+      if (now - lastUpdateTime < 1000) { // 1秒內不重複觸發
+        console.log('忽略過頻繁的更新請求');
+        return;
+      }
+      
+      lastUpdateTime = now;
+      console.log('TimeTracker 監聽到 timeentry_updated 事件');
+      
+      try {
+        // 從 localStorage 讀取最新記錄
+        const entriesJson = localStorage.getItem('timetracker-time-entries');
+        if (entriesJson) {
+          const localEntries = JSON.parse(entriesJson);
+          console.log('從 localStorage 讀取到最新時間記錄:', localEntries.length);
+          
+          // 深度比較，檢查記錄是否有變化
+          const currentEntriesJson = JSON.stringify(timeEntries);
+          const localEntriesJson = JSON.stringify(localEntries);
+          
+          if (localEntriesJson !== currentEntriesJson) {
+            console.log('檢測到時間記錄有變化，使用 onReloadTimeEntries 重新載入');
+            // 使用新的 onReloadTimeEntries 函數而不是 onStopTracking
+            if (typeof onReloadTimeEntries === 'function') {
+              setTimeout(() => {
+                onReloadTimeEntries();
+              }, 50);
+            }
+          } else {
+            console.log('時間記錄沒有變化，無需更新');
+          }
+        }
+      } catch (error) {
+        console.error('處理時間記錄更新事件出錯:', error);
+      }
+    };
+
+    // 註冊事件監聽器
+    window.addEventListener('timeentry_updated', handleTimeEntryUpdated);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'timetracker-time-entries') {
+        console.log('偵測到 localStorage 中的時間記錄變更');
+        handleTimeEntryUpdated();
+      }
+    });
+
+    return () => {
+      // 移除事件監聽器
+      window.removeEventListener('timeentry_updated', handleTimeEntryUpdated);
+      window.removeEventListener('storage', (e) => {
+        if (e.key === 'timetracker-time-entries') {
+          handleTimeEntryUpdated();
+        }
+      });
+    };
+  }, [timeEntries, onReloadTimeEntries]);
 
   // 如果沒有專案，顯示引導
   if (hasNoProjects) {
@@ -369,12 +546,128 @@ const TimeTracker = ({
           <div className="card-header">
             <div className="flex items-center justify-between">
               <h3 className="card-title" style={{ fontSize: '1.125rem' }}>最近記錄</h3>
-              <button
-                onClick={() => setActiveTab('reports')}
-                className="btn btn-sm btn-secondary"
-              >
-                查看全部
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    console.log('手動刷新時間記錄');
+                    
+                    // 顯示加載指示器
+                    const showLoadingToast = () => {
+                      if (document.getElementById('refresh-toast')) {
+                        document.getElementById('refresh-toast').remove();
+                      }
+                      
+                      const toast = document.createElement('div');
+                      toast.id = 'refresh-toast';
+                      toast.style.position = 'fixed';
+                      toast.style.bottom = '20px';
+                      toast.style.right = '20px';
+                      toast.style.backgroundColor = '#3b82f6';
+                      toast.style.color = 'white';
+                      toast.style.padding = '10px 15px';
+                      toast.style.borderRadius = '4px';
+                      toast.style.zIndex = '9999';
+                      toast.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                      toast.innerHTML = '正在刷新數據...';
+                      
+                      document.body.appendChild(toast);
+                      return toast;
+                    };
+                    
+                    const updateToastSuccess = (toast) => {
+                      toast.style.backgroundColor = '#10b981';
+                      toast.innerHTML = '記錄已刷新';
+                      
+                      setTimeout(() => {
+                        if (document.getElementById('refresh-toast')) {
+                          document.getElementById('refresh-toast').remove();
+                        }
+                      }, 3000);
+                    };
+                    
+                    const updateToastError = (toast) => {
+                      toast.style.backgroundColor = '#ef4444';
+                      toast.innerHTML = '刷新失敗，請重試';
+                      
+                      setTimeout(() => {
+                        if (document.getElementById('refresh-toast')) {
+                          document.getElementById('refresh-toast').remove();
+                        }
+                      }, 3000);
+                    };
+                    
+                    const toast = showLoadingToast();
+                    
+                    try {
+                      // 使用兩種方式刷新記錄
+                      
+                      // 1. 從 localStorage 獲取最新記錄
+                      let localEntries = [];
+                      try {
+                        // 清除可能的緩存
+                        localStorage.removeItem('__temp_clear_cache');
+                        localStorage.setItem('__temp_clear_cache', Date.now().toString());
+                        localStorage.removeItem('__temp_clear_cache');
+                        
+                        const entriesJson = localStorage.getItem('timetracker-time-entries');
+                        if (entriesJson) {
+                          localEntries = JSON.parse(entriesJson);
+                          console.log('本地存儲中的記錄數量:', localEntries.length);
+                          
+                          if (localEntries.length > 0 && 
+                              JSON.stringify(localEntries) !== JSON.stringify(timeEntries)) {
+                            console.log('從 localStorage 發現新記錄，正在更新');
+                            // 透過父組件的 onStopTracking 函數更新記錄
+                            if (typeof onStopTracking === 'function') {
+                              await onStopTracking();
+                            }
+                          }
+                        }
+                      } catch (err) {
+                        console.error('讀取本地記錄失敗:', err);
+                      }
+                      
+                      // 2. 如果還是無法獲取最新記錄，嘗試重新加載頁面
+                      if (timeEntries.length === 0 && localEntries.length > 0) {
+                        console.log('顯示記錄為空但本地有記錄，準備重新加載');
+                        
+                        // 使用特殊標記防止循環重載
+                        const reloadCount = parseInt(sessionStorage.getItem('timetracker_reload_count') || '0');
+                        if (reloadCount < 2) {  // 最多重載 2 次
+                          sessionStorage.setItem('timetracker_reload_count', (reloadCount + 1).toString());
+                          
+                          toast.innerHTML = '正在重新載入頁面...';
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1000);
+                          return;
+                        } else {
+                          // 超過重載次數限制，顯示錯誤
+                          console.error('達到重載次數限制，仍無法獲取最新記錄');
+                        }
+                      }
+                      
+                      // 成功刷新
+                      updateToastSuccess(toast);
+                    } catch (error) {
+                      console.error('刷新記錄失敗:', error);
+                      updateToastError(toast);
+                    }
+                  }}
+                  className="btn btn-sm btn-outline-secondary"
+                  title="刷新記錄"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className="btn btn-sm btn-secondary"
+                >
+                  查看全部
+                </button>
+              </div>
             </div>
           </div>
           <div>
@@ -407,6 +700,16 @@ const TimeTracker = ({
                 </div>
               </div>
             ))}
+            <div style={{
+              padding: 'var(--space-3)',
+              backgroundColor: '#f9fafb',
+              borderTop: '1px solid var(--gray-200)',
+              fontSize: '0.875rem',
+              color: 'var(--gray-500)',
+              textAlign: 'center'
+            }}>
+              結束計時後，新記錄將自動出現在這裡
+            </div>
           </div>
         </div>
       )}

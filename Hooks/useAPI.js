@@ -151,29 +151,35 @@ const apiRequest = async (endpoint, options = {}) => {
         
         if (!response.ok) {
           let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-          
-          if (response.status === 401) {
-            // 401 錯誤 - 清除無效的令牌
-            localStorage.removeItem('timetracker_auth_token');
-            localStorage.removeItem('timetracker_user_data');
-            localStorage.removeItem('timetracker_refresh_token');
-            
-            // 如果是認證相關的端點，直接拋出錯誤
-            if (endpoint.includes('/auth/')) {
-              errorMessage = '認證失敗，請檢查您的登入資訊';
-            } else {
-              errorMessage = '認證令牌已過期，請重新登入';
-            }
-          }
+          let errorResponse = null;
           
           try {
-            const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
+            // 保存完整的錯誤響應
+            errorResponse = await response.json();
+            console.error('API 錯誤響應:', {
+              status: response.status, 
+              url: `${API_BASE_URL}${endpoint}`,
+              method: options.method || 'GET',
+              body: options.body,
+              response: errorResponse
+            });
+            errorMessage = errorResponse.message || errorMessage;
           } catch (e) {
             // 無法解析 JSON，使用 HTTP 狀態信息
+            console.error('無法解析 API 錯誤響應:', {
+              status: response.status,
+              text: await response.text()
+            });
           }
           
-          throw new Error(errorMessage);
+          // 創建自定義錯誤對象，包含完整的錯誤響應
+          const apiError = new Error(errorMessage);
+          apiError.response = { 
+            status: response.status,
+            data: errorResponse
+          };
+          
+          throw apiError;
         }
         
         const data = await response.json();
@@ -250,8 +256,17 @@ export const useProjectAPI = () => {
         throw new Error(response.message || '創建專案失敗');
       }
     } catch (err) {
-      setError(err.message);
-      return { success: false, message: err.message };
+      const errorMessage = err.response && err.response.data 
+        ? err.response.data.message || '創建專案失敗' 
+        : err.message;
+      
+      setError(errorMessage);
+      return { 
+        success: false, 
+        message: errorMessage,
+        details: err.response && err.response.data ? err.response.data.details : null,
+        response: err.response
+      };
     } finally {
       setLoading(false);
     }
@@ -424,12 +439,62 @@ export const useTimeTrackingAPI = () => {
       setLoading(true);
       setError(null);
       
+      // 檢查 entryId 是否存在
+      if (!entryId) {
+        console.error('無法停止計時：缺少 entryId');
+        return { success: false, message: '無法停止計時：缺少計時記錄 ID' };
+      }
+      
+      console.log(`嘗試停止計時，ID: ${entryId}`);
+      
+      // 嘗試從 localStorage 獲取活動計時的最新信息
+      try {
+        const activeEntryJson = localStorage.getItem('timetracker_active_entry');
+        if (activeEntryJson) {
+          const storedEntry = JSON.parse(activeEntryJson);
+          console.log('從 localStorage 獲取到的活動計時:', storedEntry);
+          // 如果 localStorage 中的 ID 與傳入的不同，記錄差異但仍使用傳入的 ID
+          if (storedEntry.id && storedEntry.id !== entryId) {
+            console.warn(`localStorage 中的 ID (${storedEntry.id}) 與傳入的 ID (${entryId}) 不一致`);
+          }
+        }
+      } catch (e) {
+        console.warn('讀取 localStorage 中的活動計時記錄失敗:', e);
+      }
+      
       const response = await apiRequest(`/time-entries/stop/${entryId}`, {
         method: 'POST',
       });
       
       if (response.success) {
         setActiveEntry(null);
+        
+        // 將完成的時間記錄保存到 localStorage
+        try {
+          const existingEntriesJson = localStorage.getItem('timetracker-time-entries');
+          const existingEntries = existingEntriesJson ? JSON.parse(existingEntriesJson) : [];
+          
+          // 確保新記錄不會重複添加
+          const isDuplicate = existingEntries.some(entry => 
+            entry.id === response.data.id || 
+            (entry.startTime === response.data.startTime && entry.endTime === response.data.endTime)
+          );
+          
+          if (!isDuplicate) {
+            existingEntries.unshift(response.data);
+            localStorage.setItem('timetracker-time-entries', JSON.stringify(existingEntries));
+            console.log('已將新完成的計時記錄添加到 localStorage');
+          }
+          
+          // 觸發更新事件
+          window.dispatchEvent(new Event('timeentry_updated'));
+        } catch (err) {
+          console.error('保存到 localStorage 失敗:', err);
+        }
+        
+        // 移除活動計時記錄
+        localStorage.removeItem('timetracker_active_entry');
+        
         // 重新獲取時間記錄
         await fetchTimeEntries();
         return { success: true, data: response.data };
@@ -437,6 +502,7 @@ export const useTimeTrackingAPI = () => {
         throw new Error(response.message || '停止計時失敗');
       }
     } catch (err) {
+      console.error('停止計時失敗:', err);
       setError(err.message);
       return { success: false, message: err.message };
     } finally {

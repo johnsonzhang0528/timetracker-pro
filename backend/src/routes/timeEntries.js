@@ -251,6 +251,8 @@ router.post('/start', async (req, res) => {
   try {
     const { projectId, description } = req.body;
     
+    console.log(`用戶 ${req.user.id} 嘗試開始計時，專案: ${projectId}, 描述: ${description || '無'}`);
+    
     // 驗證專案是否屬於當前用戶
     const project = await prisma.project.findFirst({
       where: {
@@ -260,6 +262,7 @@ router.post('/start', async (req, res) => {
     });
     
     if (!project) {
+      console.log(`找不到專案 ${projectId} 或專案不屬於用戶 ${req.user.id}`);
       return res.status(404).json(formatErrorResponse('找不到指定的專案'));
     }
     
@@ -272,7 +275,11 @@ router.post('/start', async (req, res) => {
     });
     
     if (activeEntry) {
-      return res.status(400).json(formatErrorResponse('已有正在進行的計時，請先停止'));
+      console.log(`用戶 ${req.user.id} 已有正在進行的計時: ${activeEntry.id}`);
+      return res.status(400).json(formatErrorResponse('已有正在進行的計時，請先停止', {
+        activeEntryId: activeEntry.id,
+        activeProjectId: activeEntry.projectId
+      }));
     }
     
     const timeEntry = await prisma.timeEntry.create({
@@ -294,9 +301,11 @@ router.post('/start', async (req, res) => {
       }
     });
     
+    console.log(`用戶 ${req.user.id} 成功開始計時: ${timeEntry.id}`);
     logger.info(`用戶 ${req.user.id} 開始計時: ${timeEntry.id}`);
     res.status(201).json(formatSuccessResponse(timeEntry, '計時開始'));
   } catch (error) {
+    console.error('開始計時失敗:', error);
     logger.error('開始計時失敗:', error);
     res.status(500).json(formatErrorResponse('開始計時失敗'));
   }
@@ -307,16 +316,30 @@ router.post('/stop/:id', async (req, res) => {
   try {
     const timeEntryId = req.params.id;
     
+    // 輸出詳細日誌以便調試
+    console.log(`嘗試停止計時，ID: ${timeEntryId}`, {
+      user: req.user.id,
+      params: req.params,
+      url: req.url
+    });
+    
+    // 放寬查詢條件，先找到記錄再判斷是否可以停止
     const existingEntry = await prisma.timeEntry.findFirst({
       where: {
         id: timeEntryId,
-        userId: req.user.id,
-        endTime: null
+        userId: req.user.id
       }
     });
     
     if (!existingEntry) {
-      return res.status(404).json(formatErrorResponse('找不到正在進行的計時記錄'));
+      console.log(`找不到計時記錄，ID: ${timeEntryId}`);
+      return res.status(404).json(formatErrorResponse(`找不到計時記錄 (ID: ${timeEntryId})`));
+    }
+    
+    // 檢查是否已經結束計時
+    if (existingEntry.endTime) {
+      console.log(`計時記錄已經結束，ID: ${timeEntryId}, 結束時間: ${existingEntry.endTime}`);
+      return res.status(400).json(formatErrorResponse('此計時記錄已經結束'));
     }
     
     const endTime = new Date();

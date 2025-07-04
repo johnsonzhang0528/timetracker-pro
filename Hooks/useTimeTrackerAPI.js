@@ -128,6 +128,10 @@ export const useTimeTrackerAPI = () => {
         activeEntryProjectId: activeEntry.projectId,
         matchedProject: matchedProject ? `${matchedProject.id} - ${matchedProject.name}` : 'null'
       });
+      
+      // 將活動的計時記錄保存到 localStorage，以便重新載入頁面時恢復
+      localStorage.setItem('timetracker_active_entry', JSON.stringify(activeEntry));
+      
       setSelectedProject(matchedProject);
       setStartTime(new Date(activeEntry.startTime));
       
@@ -138,6 +142,14 @@ export const useTimeTrackerAPI = () => {
       setIsTracking(false);
       setCurrentTime(0);
       setStartTime(null);
+      
+      // 清除 localStorage 中的所有計時相關記錄
+      localStorage.removeItem('timetracker_active_entry');
+      localStorage.removeItem('timetracker_is_tracking');
+      localStorage.removeItem('timetracker_paused_entry');
+      localStorage.removeItem('timetracker_resumed');
+      
+      console.log('已清除所有本地計時狀態');
     }
   }, [activeEntry, projects]);
 
@@ -237,29 +249,68 @@ export const useTimeTrackerAPI = () => {
     // 如果沒有暫停的計時，或恢復失敗，則開始新計時
     if (!selectedProject) {
       displayToast('請先選擇一個專案', 'error');
-      return;
+      return { success: false, message: '請先選擇一個專案' };
     }
     
-    // 檢查是否已經有活動的計時，並且不是恢復已暫停的計時
-    if (isTracking) {
-      displayToast('已有正在進行的計時，請先停止', 'warning');
-      return;
+    // 檢查是否已經有活動的計時，但不是簡單的 isTracking 檢查
+    // 因為可能存在本地狀態與後端狀態不一致的情況
+    const localActiveEntry = localStorage.getItem('timetracker_active_entry');
+    const localIsTracking = localStorage.getItem('timetracker_is_tracking') === 'true';
+    
+    if (isTracking || localIsTracking || localActiveEntry) {
+      console.log('檢測到已有活動計時:', { isTracking, localIsTracking, hasLocalActiveEntry: !!localActiveEntry });
+      
+      // 如果本地狀態顯示正在計時，但應用狀態不一致，嘗試修復
+      if ((localIsTracking || localActiveEntry) && !isTracking) {
+        console.log('本地狀態與應用狀態不一致，嘗試修復');
+        
+        // 嘗試獲取後端活動計時狀態
+        try {
+          const activeTimerResult = await timeAPI.getActiveTimer();
+          if (activeTimerResult.success && activeTimerResult.data) {
+            // 同步狀態
+            timeAPI.setActiveEntry(activeTimerResult.data);
+            console.log('已同步後端活動計時狀態');
+          } else {
+            // 後端沒有活動計時，清除本地狀態
+            localStorage.removeItem('timetracker_active_entry');
+            localStorage.removeItem('timetracker_is_tracking');
+            console.log('已清除不一致的本地狀態');
+          }
+        } catch (err) {
+          console.warn('無法獲取後端活動計時狀態:', err);
+        }
+      }
+      
+      // 再次檢查是否仍有活動計時
+      if (isTracking || timeAPI.activeEntry) {
+        const errorMessage = '已有正在進行的計時，請先停止';
+        displayToast(errorMessage, 'warning');
+        return { success: false, message: errorMessage };
+      }
     }
     
     try {
       setLoading(true);
+      console.log('嘗試開始計時:', { selectedProject: selectedProject.name, projectId: selectedProject.id });
       
       // 使用 apiClient 進行操作 - 它會處理離線情況
       const result = await apiClient.timeEntries.startTimer(selectedProject.id, '');
       
       if (result.success) {
+        console.log('開始計時成功:', result);
+        
+        // 更新活動計時狀態
+        timeAPI.setActiveEntry(result.data);
+        
+        // 記錄到本地儲存
+        localStorage.setItem('timetracker_is_tracking', 'true');
+        
         if (result.offline) {
           // 離線模式處理
-          timeAPI.setActiveEntry(result.data);
           displayToast(`開始追蹤「${selectedProject.name}」(離線模式)`, 'info');
         } else {
           // 在線模式處理
-          timeAPI.setActiveEntry(result.data);
           displayToast(`開始追蹤「${selectedProject.name}」`, 'success');
         }
         
@@ -271,17 +322,18 @@ export const useTimeTrackerAPI = () => {
         
         return result;
       } else {
+        console.error('開始計時失敗:', result);
         displayToast(result.message || '開始計時失敗', 'error');
         return result;
       }
     } catch (error) {
       console.error('開始計時失敗:', error);
-      displayToast('開始計時失敗', 'error');
+      displayToast(error.message || '開始計時失敗', 'error');
       return { success: false, message: error.message };
     } finally {
       setLoading(false);
     }
-  }, [selectedProject, projects, isTracking, activeEntry, setSelectedProject, setCurrentTime, setIsTracking, timeAPI, displayToast, trackUserAction]);
+  }, [selectedProject, projects, isTracking, timeAPI.activeEntry, setSelectedProject, setCurrentTime, setIsTracking, timeAPI, displayToast, trackUserAction]);
 
   // 暫停計時 - API 版本 (暫時停止但不保存記錄)
   const pauseTracking = useCallback(async () => {
@@ -333,17 +385,74 @@ export const useTimeTrackerAPI = () => {
 
   // 停止計時並儲存記錄 - API 版本
   const stopTracking = useCallback(async () => {
-    if (!activeEntry) {
-      displayToast('沒有活動的計時記錄', 'error');
-      return;
+    // 詳細檢查 activeEntry
+    console.log('檢查 activeEntry:', {
+      exists: !!activeEntry,
+      id: activeEntry?.id,
+      startTime: activeEntry?.startTime,
+      endTime: activeEntry?.endTime,
+      projectId: activeEntry?.projectId
+    });
+    
+    let currentActiveEntry = activeEntry;
+    
+    if (!currentActiveEntry) {
+      // 嘗試從 localStorage 獲取活動的計時記錄
+      try {
+        const activeEntryJson = localStorage.getItem('timetracker_active_entry');
+        if (activeEntryJson) {
+          const storedActiveEntry = JSON.parse(activeEntryJson);
+          console.log('從 localStorage 找到活動計時記錄:', storedActiveEntry);
+          if (storedActiveEntry.id) {
+            // 暫時設置活動計時記錄
+            timeAPI.setActiveEntry(storedActiveEntry);
+            currentActiveEntry = storedActiveEntry;
+            console.log('從 localStorage 設置了活動計時記錄');
+          } else {
+            displayToast('活動計時記錄缺少 ID', 'error');
+            return { success: false, message: '活動計時記錄缺少 ID' };
+          }
+        } else {
+          // 如果 localStorage 中也沒有活動計時記錄，嘗試查詢API
+          try {
+            console.log('嘗試從API獲取活動計時記錄');
+            const activeTimerResult = await timeAPI.getActiveTimer();
+            if (activeTimerResult.success && activeTimerResult.data) {
+              currentActiveEntry = activeTimerResult.data;
+              timeAPI.setActiveEntry(currentActiveEntry);
+              console.log('從API獲取並設置了活動計時記錄:', currentActiveEntry);
+            } else {
+              displayToast('沒有活動的計時記錄', 'error');
+              return { success: false, message: '沒有活動的計時記錄' };
+            }
+          } catch (apiErr) {
+            console.error('從API獲取活動計時記錄失敗:', apiErr);
+            displayToast('沒有活動的計時記錄', 'error');
+            return { success: false, message: '沒有活動的計時記錄' };
+          }
+        }
+      } catch (err) {
+        console.error('嘗試從 localStorage 獲取活動計時記錄失敗:', err);
+        displayToast('沒有活動的計時記錄', 'error');
+        return { success: false, message: '沒有活動的計時記錄' };
+      }
+    }
+    
+    // 再次檢查 activeEntry (可能已通過上述代碼設置)
+    if (!currentActiveEntry?.id) {
+      displayToast('活動計時記錄缺少 ID', 'error');
+      console.error('活動計時記錄缺少 ID:', currentActiveEntry);
+      return { success: false, message: '活動計時記錄缺少 ID' };
     }
     
     try {
       setLoading(true);
-      console.log('停止計時中...', activeEntry.id);
+      console.log('停止計時中...', currentActiveEntry.id);
       
       // 使用 apiClient 進行操作
-      const result = await apiClient.timeEntries.stopTimer(activeEntry.id);
+      const result = await apiClient.timeEntries.stopTimer(currentActiveEntry.id);
+      
+      console.log('停止計時結果:', result);
       
       if (result.success) {
         const amount = calculateEarnings(currentTime, selectedProject?.hourlyRate || selectedProject?.rate || 0);
@@ -394,6 +503,8 @@ export const useTimeTrackerAPI = () => {
         // 清除所有計時相關的本地存儲
         localStorage.removeItem('timetracker_paused_entry');
         localStorage.removeItem('timetracker_resumed');
+        localStorage.removeItem('timetracker_active_entry');
+        localStorage.removeItem('timetracker_is_tracking');
         
         // 重置計時器引用
         pausedTimeRef.current = null;
@@ -401,17 +512,51 @@ export const useTimeTrackerAPI = () => {
         
         // 設置活動計時為 null
         timeAPI.setActiveEntry(null);
-        
-        // 為了確保數據一致性，異步重新載入所有時間記錄
-        console.log('重新載入所有時間記錄...');
-        setTimeout(async () => {
+          
+          // 保存到 localStorage 時觸發 storage 事件以通知其他組件更新
           try {
-            const entriesResult = await timeAPI.fetchTimeEntries();
-            console.log('重新載入後的所有時間記錄:', entriesResult?.data?.timeEntries?.length || '無資料');
-          } catch (error) {
-            console.error('重新載入時間記錄失敗:', error);
+            // 先獲取已有的時間記錄
+            const existingEntriesJson = localStorage.getItem('timetracker-time-entries');
+            const existingEntries = existingEntriesJson ? JSON.parse(existingEntriesJson) : [];
+            
+            // 確保新記錄不會重複添加
+            const isDuplicate = existingEntries.some(entry => 
+              entry.id === newTimeEntry.id || 
+              (entry.startTime === newTimeEntry.startTime && entry.endTime === newTimeEntry.endTime)
+            );
+            
+            if (!isDuplicate) {
+              // 添加新記錄
+              existingEntries.unshift(newTimeEntry);
+              
+              // 重新保存
+              localStorage.setItem('timetracker-time-entries', JSON.stringify(existingEntries));
+              
+              console.log('成功將新記錄保存到 localStorage:', {
+                newEntry: newTimeEntry,
+                totalEntries: existingEntries.length
+              });
+            } else {
+              console.log('發現重複記錄，未添加到 localStorage');
+            }
+            
+            // 不論如何都觸發更新事件
+            window.dispatchEvent(new Event('timeentry_updated'));
+            
+            // 額外嘗試：直接更新 timeEntries 狀態
+            setTimeout(() => {
+              console.log('延遲更新 timeEntries 狀態');
+              if (timeAPI && typeof timeAPI.setTimeEntries === 'function') {
+                timeAPI.setTimeEntries([...existingEntries]);
+              }
+            }, 200);
+          } catch (err) {
+            console.error('保存時間記錄到本地儲存失敗:', err);
           }
-        }, 500);
+          
+          // 注意：移除自動重新載入，避免覆蓋剛添加的新記錄
+          // 讓 App.jsx 的 wrappedStopTracking 來處理後續的數據同步
+          console.log('停止計時完成，新記錄已添加到本地狀態');
         
         return result;
       } else {
@@ -673,6 +818,11 @@ export const useTimeTrackerAPI = () => {
     selectedProject,
     timeEntries,
     
+    // API 引用 - 允許直接訪問 API Hooks 以進行更高級操作
+    projectAPI,
+    timeAPI,
+    clientAPI,
+    
     // UI 狀態
     activeTab,
     showToast,
@@ -684,8 +834,21 @@ export const useTimeTrackerAPI = () => {
     stopAndStartTracking, // 新增的輔助函數
     setSelectedProject,
     setActiveTab,
-    setProjects: () => {}, // API 版本通過 API 操作更新
-    setTimeEntries: () => {}, // API 版本通過 API 操作更新
+    setProjects: (projects) => {
+      if (projectAPI && typeof projectAPI.setProjects === 'function') {
+        projectAPI.setProjects(projects);
+      }
+    },
+    setTimeEntries: (entriesOrUpdater) => {
+      if (timeAPI && typeof timeAPI.setTimeEntries === 'function') {
+        console.log('API Hook: 更新時間記錄');
+        if (typeof entriesOrUpdater === 'function') {
+          timeAPI.setTimeEntries(entriesOrUpdater);
+        } else {
+          timeAPI.setTimeEntries(() => entriesOrUpdater);
+        }
+      }
+    },
     displayToast,
     hideToast,
     loadInitialData,

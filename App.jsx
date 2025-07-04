@@ -52,8 +52,191 @@ const App = () => {
     setSelectedProject: originalSetSelectedProject,
     setActiveTab,
     setProjects,
-    hideToast
+    hideToast,
+    activeEntry
   } = timeTrackerHook;
+  
+  // 重新載入時間記錄的函數（不執行停止計時邏輯）
+  const reloadTimeEntries = async () => {
+    console.log('重新載入時間記錄');
+    try {
+      // 首先從 localStorage 讀取最新記錄
+      const localEntriesJson = localStorage.getItem('timetracker-time-entries');
+      const localEntries = localEntriesJson ? JSON.parse(localEntriesJson) : [];
+      
+      // 如果使用 API 模式，則嘗試合併 API 數據
+      if (useAPI && timeTrackerHook.timeAPI) {
+        console.log('通過 API 重新載入時間記錄');
+        const apiResult = await timeTrackerHook.timeAPI.fetchTimeEntries();
+        console.log('API 重新載入結果:', apiResult);
+        
+        if (apiResult && apiResult.success && apiResult.data) {
+          const apiEntries = apiResult.data.timeEntries || [];
+          
+          // 合併本地和 API 數據，避免覆蓋最新的本地記錄
+          const mergedEntries = [...localEntries];
+          
+          // 只添加 API 中有但本地沒有的記錄
+          apiEntries.forEach(apiEntry => {
+            const existsInLocal = localEntries.some(localEntry => 
+              localEntry.id === apiEntry.id
+            );
+            if (!existsInLocal) {
+              mergedEntries.push(apiEntry);
+            }
+          });
+          
+          // 按時間排序
+          mergedEntries.sort((a, b) => {
+            const timeA = new Date(a.startTime || a.date);
+            const timeB = new Date(b.startTime || b.date);
+            return timeB - timeA;
+          });
+          
+          console.log('合併後重新載入記錄數量:', mergedEntries.length);
+          
+          // 更新 localStorage 和狀態
+          localStorage.setItem('timetracker-time-entries', JSON.stringify(mergedEntries));
+          timeTrackerHook.setTimeEntries(mergedEntries);
+        }
+      } else {
+        // 非 API 模式，直接使用本地記錄
+        if (localEntries.length > 0) {
+          console.log('從 localStorage 重新載入記錄數量:', localEntries.length);
+          timeTrackerHook.setTimeEntries(localEntries);
+        }
+      }
+    } catch (error) {
+      console.error('重新載入時間記錄失敗:', error);
+    }
+  };
+
+  // 包裝 stopTracking 函數以確保在計時結束後立即刷新 timeEntries
+  const wrappedStopTracking = async () => {
+    console.log('包裝的 stopTracking 函數被調用', { 
+      isTracking, 
+      activeEntry
+    });
+    try {
+      // 在執行操作前先獲取舊數據作為參考
+      const beforeOperationJson = localStorage.getItem('timetracker-time-entries');
+      const beforeOperationEntries = beforeOperationJson ? JSON.parse(beforeOperationJson) : [];
+      console.log('操作前 localStorage 中的記錄數量:', beforeOperationEntries.length);
+      
+      // 只有當實際正在計時時才執行 stopTracking
+      let result = { success: true };
+      if (isTracking) {
+        console.log('正在執行停止計時操作', { activeEntry });
+        
+        // 嘗試檢查 localStorage 中的活動計時記錄
+        try {
+          const activeEntryJson = localStorage.getItem('timetracker_active_entry');
+          if (activeEntryJson) {
+            const storedEntry = JSON.parse(activeEntryJson);
+            console.log('從 localStorage 讀取到的活動計時記錄:', storedEntry);
+          }
+        } catch (e) {
+          console.warn('讀取 localStorage 中的活動計時記錄失敗:', e);
+        }
+        
+        // 調用原始的 stopTracking 函數
+        result = await stopTracking();
+        console.log('停止計時結果:', result);
+        
+        // 停止計時成功後，立即清除本地狀態，確保狀態一致性
+        if (result && result.success) {
+          console.log('停止計時成功，清除本地計時狀態');
+          localStorage.removeItem('timetracker_active_entry');
+          localStorage.removeItem('timetracker_is_tracking');
+          localStorage.removeItem('timetracker_paused_entry');
+          localStorage.removeItem('timetracker_resumed');
+        }
+      } else {
+        console.log('沒有活動計時，將進行手動刷新操作');
+      }
+      
+      // 強制重新獲取最新記錄
+      console.log('準備重新獲取最新記錄');
+      
+      // 首先確保從 localStorage 獲取最新記錄並更新狀態
+      try {
+        const entriesJson = localStorage.getItem('timetracker-time-entries');
+        if (entriesJson) {
+          const localEntries = JSON.parse(entriesJson);
+          console.log('從 localStorage 讀取到的最新記錄數量:', localEntries.length);
+          
+          // 檢查是否有新記錄
+          const hasNewEntries = localEntries.length > beforeOperationEntries.length;
+          console.log('檢測到新記錄:', hasNewEntries);
+          
+          if (localEntries.length > 0) {
+            // 立即更新 timeEntries 狀態
+            console.log('立即更新本地 timeEntries 狀態');
+            timeTrackerHook.setTimeEntries(localEntries);
+            
+            // 觸發自定義事件，通知其他組件更新
+            window.dispatchEvent(new Event('timeentry_updated'));
+          }
+        }
+      } catch (error) {
+        console.error('從 localStorage 獲取記錄時出錯:', error);
+      }
+      
+      // 延遲 API 刷新，避免立即覆蓋本地更新的數據
+      if (useAPI && timeTrackerHook.timeAPI) {
+        // 使用較長的延遲，讓本地狀態先穩定
+        setTimeout(async () => {
+          try {
+            console.log('延遲通過 API 獲取最新時間記錄');
+            
+            // 在 API 刷新前，先保存當前的本地記錄
+            const currentLocalEntries = JSON.parse(localStorage.getItem('timetracker-time-entries') || '[]');
+            
+            const apiResult = await timeTrackerHook.timeAPI.fetchTimeEntries();
+            console.log('API 刷新結果:', apiResult);
+            
+            // API 刷新後，合併本地和 API 數據，確保不丟失最新記錄
+            if (apiResult && apiResult.success && apiResult.data) {
+              const apiEntries = apiResult.data.timeEntries || [];
+              
+              // 合併數據：優先保留本地的最新記錄
+              const mergedEntries = [...currentLocalEntries];
+              
+              // 只添加 API 中有但本地沒有的記錄
+              apiEntries.forEach(apiEntry => {
+                const existsInLocal = currentLocalEntries.some(localEntry => 
+                  localEntry.id === apiEntry.id
+                );
+                if (!existsInLocal) {
+                  mergedEntries.push(apiEntry);
+                }
+              });
+              
+              // 按時間排序
+              mergedEntries.sort((a, b) => {
+                const timeA = new Date(a.startTime || a.date);
+                const timeB = new Date(b.startTime || b.date);
+                return timeB - timeA;
+              });
+              
+              console.log('合併後的記錄數量:', mergedEntries.length);
+              
+              // 更新 localStorage 和狀態
+              localStorage.setItem('timetracker-time-entries', JSON.stringify(mergedEntries));
+              timeTrackerHook.setTimeEntries(mergedEntries);
+            }
+          } catch (err) {
+            console.error('延遲 API 刷新失敗:', err);
+          }
+        }, 2000); // 2秒延遲，確保本地狀態穩定
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('停止計時或刷新操作失敗:', error);
+      return { success: false, message: error.message };
+    }
+  };
   
   // 包裝 setSelectedProject 函數以添加調試日誌
   const setSelectedProject = (project) => {
@@ -243,7 +426,7 @@ const App = () => {
             timeEntries={timeEntries}
             onStartTracking={startTracking}
             onPauseTracking={pauseTracking}
-            onStopTracking={stopTracking}
+            onStopTracking={wrappedStopTracking}
             onStopAndStartTracking={stopAndStartTracking}
             onProjectChange={setSelectedProject}
             setActiveTab={setActiveTab}
@@ -283,9 +466,10 @@ const App = () => {
             timeEntries={timeEntries}
             onStartTracking={startTracking}
             onPauseTracking={pauseTracking}
-            onStopTracking={stopTracking}
+            onStopTracking={wrappedStopTracking}
             onStopAndStartTracking={stopAndStartTracking}
             onProjectChange={setSelectedProject}
+            onReloadTimeEntries={reloadTimeEntries}
             setActiveTab={setActiveTab}
           />
         );

@@ -419,26 +419,86 @@ class TimeEntriesClient {
   // 開始計時
   async startTimer(projectId, description = '') {
     try {
+      if (!projectId) {
+        log.error('無法開始計時：缺少 projectId');
+        throw new Error('無法開始計時：缺少專案 ID');
+      }
+      
+      log.info(`嘗試開始計時，專案: ${projectId}, 描述: ${description || '無'}`);
+      
+      // 檢查是否有活動的計時，無論在線還是離線模式
+      try {
+        // 1. 首先嘗試從 localStorage 檢查
+        const activeEntryJson = localStorage.getItem('timetracker_active_entry');
+        if (activeEntryJson) {
+          const activeEntry = JSON.parse(activeEntryJson);
+          if (activeEntry && !activeEntry.endTime) {
+            log.warn(`檢測到 localStorage 中有活動計時: ${activeEntry.id}`);
+            throw new Error('已有進行中的計時，請先停止');
+          }
+        }
+        
+        // 2. 然後在在線模式下，檢查後端
+        if (!this.apiClient.canOperateOffline()) {
+          const activeResponse = await this.apiClient.request(`${this.endpoint}/active`);
+          if (activeResponse.data) {
+            log.warn(`檢測到後端有活動計時: ${activeResponse.data.id}`);
+            throw new Error('已有進行中的計時，請先停止');
+          }
+        }
+      } catch (checkError) {
+        // 如果錯誤消息是 "已有進行中的計時"，則拋出這個錯誤
+        if (checkError.message && checkError.message.includes('已有進行中的計時')) {
+          throw checkError;
+        }
+        // 其他錯誤（如網絡錯誤）則忽略，繼續嘗試開始計時
+        log.warn('檢查活動計時時出錯，但將繼續嘗試開始計時:', checkError);
+      }
+      
       if (this.apiClient.canOperateOffline()) {
         // 離線模式：創建一個帶有開始時間的記錄
         const now = new Date();
+        const offlineId = 'offline_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
         const timerData = {
+          id: offlineId,
           projectId,
           description,
           startTime: now.toISOString(),
           endTime: null
         };
         
-        return await this.create(timerData);
+        // 將活動計時記錄到 localStorage
+        localStorage.setItem('timetracker_active_entry', JSON.stringify(timerData));
+        localStorage.setItem('timetracker_is_tracking', 'true');
+        
+        log.info(`在離線模式下開始計時: ${offlineId}, 專案: ${projectId}`);
+        return { success: true, data: timerData, offline: true };
       }
       
       // 在線模式：使用專門的 API
-      const response = await this.apiClient.request(`${this.endpoint}/start`, {
-        method: 'POST',
-        body: JSON.stringify({ projectId, description })
-      });
-      
-      return { success: true, data: response.data };
+      try {
+        const response = await this.apiClient.request(`${this.endpoint}/start`, {
+          method: 'POST',
+          body: JSON.stringify({ projectId, description })
+        });
+        
+        // 將活動計時記錄到 localStorage
+        if (response.data) {
+          localStorage.setItem('timetracker_active_entry', JSON.stringify(response.data));
+          localStorage.setItem('timetracker_is_tracking', 'true');
+        }
+        
+        log.info(`在線模式開始計時成功: ${response.data?.id}, 專案: ${projectId}`);
+        return { success: true, data: response.data };
+      } catch (apiError) {
+        // 如果 API 請求失敗，檢查是否需要切換到離線模式
+        if (this.enabledOfflineMode && (!this.isOnline() || apiError.message.includes('網絡連接不可用'))) {
+          log.warn('API 請求失敗，切換到離線模式');
+          return this.startTimer(projectId, description);  // 遞迴調用，但會走離線邏輯
+        }
+        
+        throw apiError; // 其他錯誤則正常拋出
+      }
     } catch (error) {
       log.error('開始計時失敗:', error);
       throw error;
@@ -448,6 +508,13 @@ class TimeEntriesClient {
   // 停止計時
   async stopTimer(timerId) {
     try {
+      if (!timerId) {
+        log.error('無法停止計時：缺少 timerId');
+        throw new Error('無法停止計時：缺少計時記錄 ID');
+      }
+      
+      log.info(`嘗試停止計時，ID: ${timerId}`);
+      
       if (this.apiClient.canOperateOffline()) {
         // 離線模式：更新現有的記錄，設置結束時間
         const now = new Date();
@@ -457,12 +524,35 @@ class TimeEntriesClient {
         });
       }
       
-      // 在線模式：使用專門的 API
-      const response = await this.apiClient.request(`${this.endpoint}/stop/${timerId}`, {
-        method: 'POST'
-      });
-      
-      return { success: true, data: response.data };
+      // 使用正確的API路徑格式（直接與後端路由匹配）
+      console.log(`發送停止計時請求到: /time-entries/stop/${timerId}`);
+      try {
+        const response = await this.apiClient.request(`/time-entries/stop/${timerId}`, {
+          method: 'POST'
+        });
+        
+        return { success: true, data: response.data };
+      } catch (error) {
+        console.error(`停止計時請求失敗 (ID: ${timerId}):`, error);
+        
+        // 嘗試記錄問題詳情
+        console.log('詳細排錯信息:', {
+          timerId,
+          errorMessage: error.message,
+          endpoint: this.endpoint
+        });
+        
+        // 再嘗試一次其他可能的路徑格式
+        try {
+          console.warn(`嘗試另一種路徑格式: ${this.endpoint}/stop/${timerId}`);
+          const response = await this.apiClient.request(`${this.endpoint}/stop/${timerId}`, {
+            method: 'POST'
+          });
+          return { success: true, data: response.data };
+        } catch (secondError) {
+          throw error; // 如果第二次嘗試也失敗，拋出原始錯誤
+        }
+      }
     } catch (error) {
       log.error(`停止計時 ${timerId} 失敗:`, error);
       throw error;
