@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { API_CONFIG, checkAPIAvailability, log, API_STATUS } from '../config/api';
+import { networkDetector, apiClient } from '../Utils/ApiClient';
+import { offlineSync, SYNC_STATUS } from '../Utils/OfflineSync';
 
 // API 狀態上下文
 const APIContext = createContext(null);
@@ -10,6 +12,10 @@ export const APIProvider = ({ children }) => {
   const [apiInfo, setApiInfo] = useState(null);
   const [useAPI, setUseAPI] = useState(API_CONFIG.useAPI);
   const [error, setError] = useState(null);
+  
+  // 同步狀態
+  const [syncStatus, setSyncStatus] = useState(SYNC_STATUS.IDLE);
+  const [syncProgress, setSyncProgress] = useState({ synced: 0, failed: 0, conflicts: 0 });
 
   // 檢查 API 狀態
   const checkAPI = async () => {
@@ -61,9 +67,55 @@ export const APIProvider = ({ children }) => {
     checkAPI();
   };
 
+  // 手動觸發同步
+  const triggerSync = async () => {
+    if (!apiClient.isOnline()) {
+      return { success: false, message: '網路連接不可用，無法同步' };
+    }
+    
+    try {
+      return await apiClient.syncOfflineOperations();
+    } catch (error) {
+      return { success: false, message: `同步失敗: ${error.message}` };
+    }
+  };
+
   // 初始化時檢查 API
   useEffect(() => {
     checkAPI();
+  }, []);
+
+  // 監聽網路狀態變化
+  useEffect(() => {
+    const handleNetworkChange = (isOnline) => {
+      log.info(`網路狀態變化: ${isOnline ? '在線' : '離線'}`);
+      
+      if (isOnline) {
+        // 網路恢復時嘗試切換到API模式
+        checkAPI();
+      } else {
+        // 網路斷開時切換到離線模式
+        setApiStatus(API_STATUS.OFFLINE);
+        setUseAPI(false);
+        setError('網路連接中斷');
+      }
+    };
+    
+    networkDetector.addListener(handleNetworkChange);
+    return () => networkDetector.removeListener(handleNetworkChange);
+  }, []);
+
+  // 監聽同步狀態變化
+  useEffect(() => {
+    const handleSyncStatusChange = (status, data) => {
+      setSyncStatus(status);
+      if (data) {
+        setSyncProgress(data);
+      }
+    };
+    
+    offlineSync.addSyncListener(handleSyncStatusChange);
+    return () => offlineSync.removeSyncListener(handleSyncStatusChange);
   }, []);
 
   // 定期檢查 API 狀態（僅在錯誤狀態下）
@@ -87,10 +139,15 @@ export const APIProvider = ({ children }) => {
     useAPI,
     error,
     
+    // 同步狀態
+    syncStatus,
+    syncProgress,
+    
     // 操作
     checkAPI,
     forceLocalMode,
     retryAPI,
+    triggerSync,
     
     // 配置
     config: API_CONFIG,

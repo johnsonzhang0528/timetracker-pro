@@ -54,6 +54,7 @@ const Auth = ({ onAuthSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     clearError();
+    setErrors({});
 
     if (!validateForm()) return;
 
@@ -61,8 +62,10 @@ const Auth = ({ onAuthSuccess }) => {
       let result;
       
       if (isLogin) {
+        console.log('🔒 嘗試登入...');
         result = await login(formData.email, formData.password, false);
       } else {
+        console.log('📝 嘗試註冊...');
         result = await register({
           email: formData.email,
           password: formData.password,
@@ -74,9 +77,13 @@ const Auth = ({ onAuthSuccess }) => {
         console.log('✅ 表單登入成功！準備跳轉...');
         console.log('📞 調用 onAuthSuccess 回調');
         onAuthSuccess && onAuthSuccess();
+      } else {
+        console.error('❌ 認證失敗:', result.message);
+        setErrors({ general: result.message || '認證失敗，請稍後再試' });
       }
     } catch (error) {
-      console.error('認證失敗:', error);
+      console.error('💥 認證過程發生錯誤:', error);
+      setErrors({ general: error.message || '認證過程中發生錯誤，請稍後再試' });
     }
   };
 

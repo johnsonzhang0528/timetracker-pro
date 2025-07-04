@@ -138,3 +138,18 @@ export const AUTH_CONFIG = {
   PASSWORD_MIN_LENGTH: 6,
   MAX_LOGIN_ATTEMPTS: 5
 };
+
+// 同步相關常數
+export const SYNC_CONSTANTS = {
+  AUTO_SYNC_INTERVAL: 60000, // 60秒自動嘗試同步
+  CONFLICT_STRATEGIES: {
+    LOCAL: 'local',
+    SERVER: 'server',
+    MERGE: 'merge'
+  },
+  STORAGE_KEYS: {
+    OFFLINE_OPERATIONS: 'timeTracker_offlineOperations',
+    LAST_SYNC: 'timeTracker_lastSync',
+    SYNC_STATUS: 'timeTracker_syncStatus'
+  }
+};
