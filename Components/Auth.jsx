@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, Mail, Lock, User, Loader, AlertTriangle } from 'lucide-react';
 import { useAuthContext } from '../Hooks/useAuth';
 
 const Auth = ({ onAuthSuccess }) => {
@@ -12,6 +12,9 @@ const Auth = ({ onAuthSuccess }) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [rememberMe, setRememberMe] = useState(false);
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   
   const { login, register, forgotPassword, isLoading, error, clearError } = useAuthContext();
 
@@ -61,7 +64,7 @@ const Auth = ({ onAuthSuccess }) => {
       let result;
       
       if (isLogin) {
-        result = await login(formData.email, formData.password, false);
+        result = await login(formData.email, formData.password, rememberMe);
       } else {
         result = await register({
           email: formData.email,
@@ -81,16 +84,35 @@ const Auth = ({ onAuthSuccess }) => {
   };
 
   // 處理忘記密碼
-  const handleForgotPassword = async () => {
-    if (!formData.email) {
-      setErrors({ email: '請先輸入您的電子郵件' });
-      return;
-    }
+  const handleForgotPassword = async (e) => {
+    if (e) e.preventDefault();
+    
+    if (forgotPasswordMode) {
+      if (!formData.email) {
+        setErrors({ email: '請輸入您的電子郵件' });
+        return;
+      }
 
-    const result = await forgotPassword(formData.email);
-    if (result.success) {
-      alert(result.message);
+      try {
+        const result = await forgotPassword(formData.email);
+        if (result.success) {
+          setResetEmailSent(true);
+        } else {
+          setErrors({ email: result.message || '重設密碼請求失敗' });
+        }
+      } catch (error) {
+        setErrors({ email: '發送重設郵件時發生錯誤' });
+      }
+    } else {
+      setForgotPasswordMode(true);
     }
+  };
+
+  // 返回登入表單
+  const handleBackToLogin = () => {
+    setForgotPasswordMode(false);
+    setResetEmailSent(false);
+    clearError();
   };
 
   // 處理輸入變化
@@ -108,6 +130,9 @@ const Auth = ({ onAuthSuccess }) => {
     setIsLogin(!isLogin);
     setFormData({ email: '', password: '', name: '', confirmPassword: '' });
     setErrors({});
+    setShowPassword(false);
+    setForgotPasswordMode(false);
+    setResetEmailSent(false);
     clearError();
   };
 
@@ -145,6 +170,301 @@ const Auth = ({ onAuthSuccess }) => {
       setErrors({ general: '登入過程中發生錯誤，請刷新頁面後重試' });
     }
   };
+
+  // 重置密碼請求已發送畫面
+  if (resetEmailSent) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        background: '#ffffff',
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: '24px'
+      }}>
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h1 style={{ 
+              fontSize: '28px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '8px',
+              letterSpacing: '-0.025em'
+            }}>
+              TimeTracker Pro
+            </h1>
+          </div>
+          
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+            padding: '32px',
+            textAlign: 'center'
+          }}>
+            <div style={{ 
+              width: '64px',
+              height: '64px',
+              margin: '0 auto 24px',
+              background: 'rgba(16, 185, 129, 0.1)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Mail size={32} color="#10b981" />
+            </div>
+            
+            <h2 style={{ 
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '12px'
+            }}>
+              密碼重設郵件已發送
+            </h2>
+            
+            <p style={{ 
+              fontSize: '14px',
+              color: '#6b7280',
+              marginBottom: '24px'
+            }}>
+              我們已發送密碼重設指引到您的郵箱：<br />
+              <span style={{ fontWeight: '500', color: '#374151' }}>{formData.email}</span>
+            </p>
+            
+            <button
+              onClick={handleBackToLogin}
+              style={{
+                width: '100%',
+                background: '#3b82f6',
+                color: 'white',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => (e.target.style.background = '#2563eb')}
+              onMouseLeave={(e) => (e.target.style.background = '#3b82f6')}
+            >
+              返回登入
+            </button>
+            
+            <p style={{ 
+              fontSize: '13px',
+              color: '#9ca3af',
+              marginTop: '16px'
+            }}>
+              沒有收到郵件？請檢查垃圾郵件箱，或<br />
+              <button
+                onClick={() => {
+                  setResetEmailSent(false);
+                  handleForgotPassword();
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#3b82f6',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  padding: '0'
+                }}
+              >
+                重新發送重設郵件
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 忘記密碼表單
+  if (forgotPasswordMode) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        background: '#ffffff',
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: '24px'
+      }}>
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h1 style={{ 
+              fontSize: '28px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '8px',
+              letterSpacing: '-0.025em'
+            }}>
+              TimeTracker Pro
+            </h1>
+          </div>
+          
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+            padding: '32px'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '8px'
+              }}>
+                重設您的密碼
+              </h2>
+              <p style={{ 
+                fontSize: '14px',
+                color: '#6b7280',
+                margin: '0'
+              }}>
+                輸入您的郵箱，我們將發送重設密碼的指引
+              </p>
+            </div>
+            
+            {error && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '12px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                color: '#dc2626',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertTriangle size={16} />
+                {error}
+              </div>
+            )}
+            
+            <form onSubmit={handleForgotPassword}>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  電子郵件
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Mail 
+                    style={{ 
+                      position: 'absolute',
+                      left: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: '#9ca3af'
+                    }} 
+                    size={16} 
+                  />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    style={{
+                      width: '100%',
+                      paddingLeft: '40px',
+                      paddingRight: '12px',
+                      paddingTop: '10px',
+                      paddingBottom: '10px',
+                      border: `1px solid ${errors.email ? '#ef4444' : '#d1d5db'}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder="your@email.com"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#3b82f6';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = errors.email ? '#ef4444' : '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+                {errors.email && (
+                  <p style={{ 
+                    marginTop: '4px',
+                    fontSize: '12px',
+                    color: '#dc2626',
+                    margin: '4px 0 0 0'
+                  }}>
+                    {errors.email}
+                  </p>
+                )}
+              </div>
+              
+              <button
+                type="submit"
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  background: '#3b82f6',
+                  color: 'white',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'background-color 0.2s',
+                  opacity: isLoading ? 0.6 : 1,
+                  marginBottom: '16px'
+                }}
+                onMouseEnter={(e) => !isLoading && (e.target.style.background = '#2563eb')}
+                onMouseLeave={(e) => !isLoading && (e.target.style.background = '#3b82f6')}
+              >
+                {isLoading ? (
+                  <Loader size={16} className="animate-spin" />
+                ) : '發送重設郵件'}
+              </button>
+              
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={handleBackToLogin}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#3b82f6',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    padding: '0'
+                  }}
+                >
+                  返回登入
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
@@ -550,16 +870,39 @@ const Auth = ({ onAuthSuccess }) => {
               </div>
             )}
 
-            {/* 忘記密碼 (僅登入時顯示) */}
+            {/* Remember Me 選項 (僅登入時顯示) */}
             {isLogin && (
               <div style={{ 
                 display: 'flex', 
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 marginBottom: '24px'
               }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '14px',
+                  color: '#374151',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={() => setRememberMe(!rememberMe)}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      accentColor: '#3b82f6',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  記住我
+                </label>
+                
                 <button
                   type="button"
-                  onClick={handleForgotPassword}
+                  onClick={() => setForgotPasswordMode(true)}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -600,14 +943,10 @@ const Auth = ({ onAuthSuccess }) => {
               onMouseLeave={(e) => !isLoading && (e.target.style.background = '#3b82f6')}
             >
               {isLoading ? (
-                <div style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid white',
-                  borderTop: '2px solid transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }} />
+                <>
+                  <Loader size={16} className="animate-spin" />
+                  {isLogin ? '登入中...' : '註冊中...'}
+                </>
               ) : (
                 isLogin ? '登入' : '建立帳戶'
               )}
@@ -662,6 +1001,9 @@ const Auth = ({ onAuthSuccess }) => {
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
         }
       `}</style>
     </div>
