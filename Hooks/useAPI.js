@@ -543,6 +543,7 @@ export const useTimeTrackingAPI = () => {
     updateTimeEntry,
     deleteTimeEntry,
     setTimeEntries, // 暴露 setTimeEntries 函數以便外部直接更新狀態
+    setActiveEntry, // 暴露 setActiveEntry 函數以便外部直接更新活動計時狀態
     clearError: () => setError(null),
   };
 };
