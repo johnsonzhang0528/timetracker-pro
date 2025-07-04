@@ -272,7 +272,7 @@ const TimeTracker = ({
                 style={{ minWidth: '140px' }}
               >
                 <Play size={20} />
-                開始計時
+                {localStorage.getItem('timetracker_paused_entry') ? '繼續計時' : '開始計時'}
               </button>
             ) : (
               <div className="flex gap-4 justify-center">

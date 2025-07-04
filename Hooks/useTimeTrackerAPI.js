@@ -161,13 +161,53 @@ export const useTimeTrackerAPI = () => {
 
   // 開始計時 - API 版本
   const startTracking = useCallback(async () => {
+    // 檢查是否有暫停的計時
+    const pausedEntryJson = localStorage.getItem('timetracker_paused_entry');
+    
+    if (pausedEntryJson) {
+      try {
+        const pausedEntry = JSON.parse(pausedEntryJson);
+        
+        // 如果有暫停的計時，恢復它
+        console.log('找到暫停的計時記錄，準備恢復:', pausedEntry);
+        
+        // 選擇之前暫停的項目
+        const pausedProject = projects.find(p => p.id === pausedEntry.projectId);
+        if (pausedProject && pausedProject.id !== selectedProject?.id) {
+          setSelectedProject(pausedProject);
+          console.log('已選擇暫停時的專案:', pausedProject.name);
+        }
+        
+        // 恢復計時狀態
+        setCurrentTime(pausedEntry.currentTime || 0);
+        setIsTracking(true);
+        
+        // 清除暫停的計時記錄
+        localStorage.removeItem('timetracker_paused_entry');
+        
+        displayToast(`已恢復「${pausedProject?.name || '未知專案'}」的計時`, 'success');
+        
+        trackUserAction('resume_tracking', { 
+          project: pausedProject?.name,
+          projectId: pausedEntry.projectId,
+          duration: pausedEntry.currentTime
+        });
+        
+        return { success: true, resumed: true };
+      } catch (error) {
+        console.error('恢復暫停計時失敗:', error);
+        localStorage.removeItem('timetracker_paused_entry');
+      }
+    }
+    
+    // 如果沒有暫停的計時，或恢復失敗，則開始新計時
     if (!selectedProject) {
       displayToast('請先選擇一個專案', 'error');
       return;
     }
     
-    // 檢查是否已經有活動的計時 - 同時檢查 isTracking 和 activeEntry
-    if (isTracking || activeEntry) {
+    // 檢查是否已經有活動的計時，並且不是恢復已暫停的計時
+    if (isTracking) {
       displayToast('已有正在進行的計時，請先停止', 'warning');
       return;
     }
@@ -207,7 +247,7 @@ export const useTimeTrackerAPI = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedProject, isTracking, activeEntry, timeAPI, displayToast, trackUserAction]);
+  }, [selectedProject, projects, isTracking, activeEntry, setSelectedProject, setCurrentTime, setIsTracking, timeAPI, displayToast, trackUserAction]);
 
   // 暫停計時 - API 版本 (暫時停止但不保存記錄)
   const pauseTracking = useCallback(async () => {
@@ -219,30 +259,35 @@ export const useTimeTrackerAPI = () => {
     try {
       setLoading(true);
       
-      // 使用 apiClient 進行操作
-      const result = await apiClient.timeEntries.stopTimer(activeEntry.id);
+      // 保存當前計時記錄而不實際停止
+      // 先存下當前活動記錄的資訊
+      const pausedEntry = { ...activeEntry };
       
-      if (result.success) {
-        if (result.offline) {
-          // 離線模式處理
-          displayToast('計時已暫停 (離線模式)', 'info');
-        } else {
-          displayToast('計時已暫停', 'info');
-        }
-        
-        // 設置活動計時為 null
-        timeAPI.setActiveEntry(null);
-        
-        trackUserAction('pause_tracking', { 
-          duration: currentTime,
-          offline: !!result.offline
-        });
-        
-        return result;
-      } else {
-        displayToast(result.message || '暫停計時失敗', 'error');
-        return result;
-      }
+      // 暫停計時，但不保存到服務器，只更新本地狀態
+      setIsTracking(false);
+      
+      // 儲存當前的暫停資訊到本地存儲中
+      localStorage.setItem('timetracker_paused_entry', JSON.stringify({
+        entryId: pausedEntry.id,
+        projectId: pausedEntry.projectId,
+        description: pausedEntry.description || '',
+        startTime: pausedEntry.startTime,
+        pausedAt: new Date().toISOString(),
+        currentTime: currentTime,
+      }));
+
+      // 保留 activeEntry，只改變 isTracking 狀態，不調用 setActiveEntry(null)
+      // 這樣在恢復時可以繼續使用同一個計時
+      
+      displayToast('計時已暫停 (可以稍後繼續)', 'info');
+      
+      trackUserAction('pause_tracking', { 
+        duration: currentTime,
+        projectId: pausedEntry.projectId,
+        paused: true
+      });
+      
+      return { success: true, paused: true };
     } catch (error) {
       console.error('暫停計時失敗:', error);
       displayToast('暫停計時失敗', 'error');
