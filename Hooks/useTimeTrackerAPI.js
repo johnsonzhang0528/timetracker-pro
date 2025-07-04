@@ -42,6 +42,10 @@ export const useTimeTrackerAPI = () => {
   // 防止重複載入的標記
   const dataLoadingRef = useRef(false);
   const initialLoadDoneRef = useRef(false);
+  
+  // 用於計時器暫停恢復的引用
+  const pausedTimeRef = useRef(null);
+  const pauseTimeOffsetRef = useRef(0);
 
   // 從 API Hook 中獲取數據
   const projects = projectAPI.projects;
@@ -150,12 +154,35 @@ export const useTimeTrackerAPI = () => {
   // 計時器邏輯 - 只有在確實有活動計時時才運行
   useEffect(() => {
     let interval;
+    
     if (isTracking && activeEntry) {
-      interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - new Date(activeEntry.startTime)) / 1000);
-        setCurrentTime(elapsed);
-      }, TIMER_INTERVAL);
+      // 檢查是否從暫停恢復，如果是，使用保存的currentTime作為基礎時間
+      const wasResumed = localStorage.getItem('timetracker_resumed');
+      
+      if (wasResumed) {
+        // 從暫停中恢復的計時，我們需要使用儲存的時間值
+        const resumedData = JSON.parse(wasResumed);
+        pausedTimeRef.current = resumedData.resumedAt;
+        pauseTimeOffsetRef.current = resumedData.currentTime;
+        
+        // 使用暫停時的計時作為基準，並添加恢復後的時間
+        interval = setInterval(() => {
+          const resumedTime = pauseTimeOffsetRef.current;
+          const elapsedSinceResume = Math.floor((Date.now() - new Date(pausedTimeRef.current)) / 1000);
+          setCurrentTime(resumedTime + elapsedSinceResume);
+        }, TIMER_INTERVAL);
+        
+        // 清除恢復標記，但保留偏移值以繼續正確計時
+        localStorage.removeItem('timetracker_resumed');
+      } else {
+        // 正常計時，直接從 startTime 計算
+        interval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - new Date(activeEntry.startTime)) / 1000);
+          setCurrentTime(elapsed);
+        }, TIMER_INTERVAL);
+      }
     }
+    
     return () => clearInterval(interval);
   }, [isTracking, activeEntry]);
 
@@ -178,9 +205,16 @@ export const useTimeTrackerAPI = () => {
           console.log('已選擇暫停時的專案:', pausedProject.name);
         }
         
-        // 恢復計時狀態
+        // 恢復計時狀態，記錄恢復時間和暫停時的時間
         setCurrentTime(pausedEntry.currentTime || 0);
         setIsTracking(true);
+        
+        // 存儲恢復時間和暫停時的當前時間，用於後續計算
+        localStorage.setItem('timetracker_resumed', JSON.stringify({
+          resumedAt: new Date().toISOString(),
+          currentTime: pausedEntry.currentTime || 0,
+          pausedAt: pausedEntry.pausedAt
+        }));
         
         // 清除暫停的計時記錄
         localStorage.removeItem('timetracker_paused_entry');
@@ -356,6 +390,14 @@ export const useTimeTrackerAPI = () => {
           project: selectedProject?.name,
           offline: !!result.offline
         });
+        
+        // 清除所有計時相關的本地存儲
+        localStorage.removeItem('timetracker_paused_entry');
+        localStorage.removeItem('timetracker_resumed');
+        
+        // 重置計時器引用
+        pausedTimeRef.current = null;
+        pauseTimeOffsetRef.current = 0;
         
         // 設置活動計時為 null
         timeAPI.setActiveEntry(null);
