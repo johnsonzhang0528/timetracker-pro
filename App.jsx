@@ -176,6 +176,19 @@ const App = () => {
             
             // 觸發自定義事件，通知其他組件更新
             window.dispatchEvent(new Event('timeentry_updated'));
+            
+            // 為了確保專案管理頁面能收到更新，額外觸發一個專案統計更新事件
+            setTimeout(() => {
+              console.log('觸發專案統計更新事件');
+              window.dispatchEvent(new Event('project_stats_update'));
+              window.dispatchEvent(new Event('storage', { key: 'timetracker-time-entries' }));
+            }, 200);
+            
+            // 再次額外觸發，確保專案管理頁面能收到更新
+            setTimeout(() => {
+              console.log('再次觸發專案統計更新事件');
+              window.dispatchEvent(new Event('project_stats_update'));
+            }, 500);
           }
         }
       } catch (error) {

@@ -27,13 +27,14 @@ const ProjectManager = () => {
   
   // 計算專案總時數和收益
   const calculateProjectTotals = useCallback(async () => {
-    if (projects.length === 0) return;
-    
     console.log('正在計算專案總時數和收益...');
     try {
       // 從 localStorage 取得時間記錄
       const timeEntriesJson = localStorage.getItem('timetracker-time-entries');
-      if (!timeEntriesJson) return;
+      if (!timeEntriesJson) {
+        console.log('沒有時間記錄，跳過計算');
+        return;
+      }
       
       const timeEntries = JSON.parse(timeEntriesJson);
       console.log(`取得 ${timeEntries.length} 筆時間記錄`);
@@ -43,7 +44,17 @@ const ProjectManager = () => {
       
       timeEntries.forEach(entry => {
         const projectId = entry.projectId || (entry.project && entry.project.id);
-        if (!projectId) return;
+        console.log('處理時間記錄:', {
+          entry: entry,
+          projectId: projectId,
+          duration: entry.duration,
+          amount: entry.amount
+        });
+        
+        if (!projectId) {
+          console.log('跳過無專案ID的記錄:', entry);
+          return;
+        }
         
         if (!projectTotals[projectId]) {
           projectTotals[projectId] = { totalHours: 0, totalEarnings: 0 };
@@ -55,28 +66,57 @@ const ProjectManager = () => {
         
         // 累加收益
         projectTotals[projectId].totalEarnings += entry.amount || 0;
+        
+        console.log(`專案 ${projectId} 累計:`, {
+          hours: projectTotals[projectId].totalHours,
+          earnings: projectTotals[projectId].totalEarnings
+        });
       });
       
       console.log('專案總計:', projectTotals);
       
-      // 更新專案狀態
-      setProjects(prevProjects => {
-        return prevProjects.map(project => {
-          const totals = projectTotals[project.id];
-          if (totals) {
+      // 更新專案狀態 - 每次都重新載入專案列表以確保最新狀態
+      const savedProjects = localStorage.getItem('timetracker-projects');
+      if (savedProjects) {
+        try {
+          const parsedProjects = JSON.parse(savedProjects);
+          console.log('重新載入專案列表進行統計計算:', parsedProjects.length);
+          
+          const updatedProjects = parsedProjects.map(project => {
+            const totals = projectTotals[project.id];
+            if (totals) {
+              console.log(`更新專案 ${project.name} 統計:`, {
+                hours: totals.totalHours,
+                earnings: totals.totalEarnings
+              });
+              return {
+                ...project,
+                totalHours: totals.totalHours,
+                totalEarnings: totals.totalEarnings
+              };
+            }
             return {
               ...project,
-              totalHours: totals.totalHours || project.totalHours || 0,
-              totalEarnings: totals.totalEarnings || project.totalEarnings || 0
+              totalHours: project.totalHours || 0,
+              totalEarnings: project.totalEarnings || 0
             };
-          }
-          return project;
-        });
-      });
+          });
+          
+          // 更新專案狀態
+          setProjects(updatedProjects);
+          
+          console.log('專案統計計算完成，已更新專案列表');
+        } catch (err) {
+          console.error('重新載入專案失敗:', err);
+        }
+      } else {
+        console.log('沒有找到專案列表，跳過統計計算');
+      }
+      
     } catch (err) {
       console.error('計算專案總時數和收益失敗:', err);
     }
-  }, [projects]);
+  }, []); // 空依賴項，因為函數內部直接從 localStorage 讀取所有數據
   
   // 載入儲存的專案
   useEffect(() => {
@@ -143,32 +183,54 @@ const ProjectManager = () => {
     const handleStorageChange = (event) => {
       if (event.key === 'timetracker-time-entries') {
         console.log('偵測到時間記錄變更，重新計算專案總時數和收益');
-        calculateProjectTotals();
+        // 使用 setTimeout 確保 localStorage 已經完全更新
+        setTimeout(() => {
+          calculateProjectTotals();
+        }, 100);
       }
     };
     
     // 監聽自定義事件
     const handleTimeEntryUpdated = () => {
       console.log('收到時間記錄更新事件，重新計算專案總時數和收益');
-      calculateProjectTotals();
+      // 使用 setTimeout 確保狀態已經更新
+      setTimeout(() => {
+        calculateProjectTotals();
+      }, 100);
+    };
+    
+    // 監聽專案統計更新事件
+    const handleProjectStatsUpdate = () => {
+      console.log('收到專案統計更新事件，立即重新計算');
+      setTimeout(() => {
+        calculateProjectTotals();
+      }, 50);
     };
     
     // 註冊事件監聽
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('timeentry_updated', handleTimeEntryUpdated);
+    window.addEventListener('project_stats_update', handleProjectStatsUpdate);
     
-    // 初始計算
-    calculateProjectTotals();
+    // 初始計算（延遲執行，確保組件完全載入）
+    const initialCalculation = setTimeout(() => {
+      calculateProjectTotals();
+    }, 500);
     
     // 每 30 秒更新一次
-    const intervalId = setInterval(calculateProjectTotals, 30000);
+    const intervalId = setInterval(() => {
+      console.log('定期重新計算專案統計...');
+      calculateProjectTotals();
+    }, 30000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('timeentry_updated', handleTimeEntryUpdated);
+      window.removeEventListener('project_stats_update', handleProjectStatsUpdate);
+      clearTimeout(initialCalculation);
       clearInterval(intervalId);
     };
-  }, [calculateProjectTotals]);
+  }, []); // 移除依賴，避免重複註冊
 
   // 獲取表單數據的狀態
   const [formState, setFormState] = useState({
@@ -782,6 +844,20 @@ const ProjectManager = () => {
             }}
           >
             🔄 重新載入
+          </button>
+
+          <button 
+            className="btn btn-text"
+            onClick={() => {
+              console.log('手動重新計算專案統計');
+              calculateProjectTotals();
+              setShowToast({
+                type: 'info',
+                message: '正在重新計算專案統計...'
+              });
+            }}
+          >
+            📊 重新計算統計
           </button>
           
           {useAPI && (
