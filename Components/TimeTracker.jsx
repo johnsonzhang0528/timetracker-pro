@@ -46,42 +46,64 @@ const TimeTracker = ({
   // 獲取今天的日期 (YYYY-MM-DD 格式)
   const today = new Date().toISOString().split('T')[0];
   
-  // 過濾今天的記錄 (同時支援 date 和 startTime 格式)
+  // 過濾今天的記錄
   const todayEntries = timeEntries.filter(entry => {
-    // 如果 entry 有 startTime，使用它 (API 格式)
     if (entry.startTime) {
       const entryDate = new Date(entry.startTime).toISOString().split('T')[0];
       return entryDate === today;
-    }
-    // 如果 entry 有 date，使用它 (本地格式)
-    else if (entry.date) {
+    } else if (entry.date) {
       return entry.date === today;
     }
     return false;
   });
   
-  console.log('今天的記錄:', todayEntries);
-  
   const todayTotal = todayEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
   const todayHours = todayEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
 
+  // 本週數據
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   
   const weekEntries = timeEntries.filter(entry => {
-    // 如果有 startTime，使用它 (API 格式)
     if (entry.startTime) {
       return new Date(entry.startTime) >= weekStart;
-    }
-    // 如果有 date，使用它 (本地格式)
-    else if (entry.date) {
+    } else if (entry.date) {
       return new Date(entry.date) >= weekStart;
     }
     return false;
   });
   
-  console.log('本週的記錄:', weekEntries);
   const weekTotal = weekEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+  const weekHours = weekEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+
+  // 本月數據
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthEntries = timeEntries.filter(entry => {
+    if (entry.startTime) {
+      return new Date(entry.startTime) >= monthStart;
+    } else if (entry.date) {
+      return new Date(entry.date) >= monthStart;
+    }
+    return false;
+  });
+  
+  const monthTotal = monthEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+  const monthHours = monthEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+
+  // 計算真正的平均時薪（基於所有歷史數據）
+  const totalEarnings = timeEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+  const totalHours = timeEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+  const realAverageRate = totalHours > 0 ? (totalEarnings / (totalHours / 3600)) : 0;
+
+  // 目標設定（可以後續從用戶設置中獲取）
+  const dailyTarget = 8 * 3600; // 8小時目標（秒）
+  const weeklyTarget = 40 * 3600; // 40小時目標
+  const monthlyTarget = 160 * 3600; // 160小時目標
+
+  // 計算完成百分比
+  const todayProgress = Math.min((todayHours / dailyTarget) * 100, 100);
+  const weekProgress = Math.min((weekHours / weeklyTarget) * 100, 100);
+  const monthProgress = Math.min((monthHours / monthlyTarget) * 100, 100);
 
   // 專案提示
   useEffect(() => {
@@ -499,44 +521,142 @@ const TimeTracker = ({
         </div>
       </div>
 
-      {/* 統計卡片 */}
+      {/* 優化的統計卡片 */}
       <div className="stats-grid">
-        {/* 今日統計 */}
+        {/* 今日統計 - 合併時間和收入 */}
         <div className="stat-card">
           <div className="flex items-center justify-between mb-2">
-            <div className="stat-label">今日</div>
+            <div className="stat-label">今日進度</div>
             <Clock size={16} style={{ color: 'var(--primary)' }} />
           </div>
-          <div className="stat-value">{formatCurrency(todayTotal)}</div>
-          <div className="stat-description">
-            {formatTime(todayHours)} 工作時間
-          </div>
+          {todayHours > 0 ? (
+            <>
+              <div className="stat-value">{formatCurrency(todayTotal)}</div>
+              <div className="stat-description">
+                {formatTime(todayHours)} · {todayProgress.toFixed(0)}% 完成
+              </div>
+              <div style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: 'var(--gray-200)',
+                borderRadius: '2px',
+                marginTop: 'var(--space-2)',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${todayProgress}%`,
+                  height: '100%',
+                  backgroundColor: 'var(--primary)',
+                  transition: 'width 0.3s ease'
+                }}></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="stat-value text-gray-400">--</div>
+              <div className="stat-description">還未開始今日工作</div>
+            </>
+          )}
         </div>
 
         {/* 本週統計 */}
         <div className="stat-card">
           <div className="flex items-center justify-between mb-2">
-            <div className="stat-label">本週</div>
+            <div className="stat-label">本週概覽</div>
             <TrendingUp size={16} style={{ color: 'var(--success)' }} />
           </div>
-          <div className="stat-value">{formatCurrency(weekTotal)}</div>
-          <div className="stat-description">
-            {weekEntries.length} 個工作記錄
-          </div>
+          {weekHours > 0 ? (
+            <>
+              <div className="stat-value">{formatCurrency(weekTotal)}</div>
+              <div className="stat-description">
+                {formatTime(weekHours)} · {weekEntries.length} 個工作階段
+              </div>
+              <div style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: 'var(--gray-200)',
+                borderRadius: '2px',
+                marginTop: 'var(--space-2)',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${weekProgress}%`,
+                  height: '100%',
+                  backgroundColor: 'var(--success)',
+                  transition: 'width 0.3s ease'
+                }}></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="stat-value text-gray-400">--</div>
+              <div className="stat-description">本週尚未記錄</div>
+            </>
+          )}
         </div>
 
-        {/* 平均時薪 */}
+        {/* 本月統計 */}
         <div className="stat-card">
           <div className="flex items-center justify-between mb-2">
-            <div className="stat-label">平均時薪</div>
+            <div className="stat-label">本月表現</div>
+            <Target size={16} style={{ color: 'var(--info)' }} />
+          </div>
+          {monthHours > 0 ? (
+            <>
+              <div className="stat-value">{formatCurrency(monthTotal)}</div>
+              <div className="stat-description">
+                {formatTime(monthHours)} · {monthProgress.toFixed(0)}% 月目標
+              </div>
+              <div style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: 'var(--gray-200)',
+                borderRadius: '2px',
+                marginTop: 'var(--space-2)',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${monthProgress}%`,
+                  height: '100%',
+                  backgroundColor: 'var(--info)',
+                  transition: 'width 0.3s ease'
+                }}></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="stat-value text-gray-400">--</div>
+              <div className="stat-description">本月首次工作</div>
+            </>
+          )}
+        </div>
+
+        {/* 效率指標 */}
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-2">
+            <div className="stat-label">效率指標</div>
             <DollarSign size={16} style={{ color: 'var(--warning)' }} />
           </div>
-          <div className="stat-value">
-            {selectedProject ? formatCurrency(selectedProject.rate || selectedProject.hourlyRate) : '--'}
-          </div>
-          <div className="stat-description">
-            {selectedProject ? selectedProject.name : '未選擇專案'}
-          </div>
+          {realAverageRate > 0 ? (
+            <>
+              <div className="stat-value">{formatCurrency(realAverageRate)}</div>
+              <div className="stat-description">
+                實際平均時薪 · {timeEntries.length} 筆記錄
+              </div>
+            </>
+          ) : selectedProject ? (
+            <>
+              <div className="stat-value">{formatCurrency(selectedProject.rate || selectedProject.hourlyRate)}</div>
+              <div className="stat-description">
+                {selectedProject.name} 設定時薪
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="stat-value text-gray-400">--</div>
+              <div className="stat-description">選擇專案查看時薪</div>
+            </>
+          )}
         </div>
       </div>
 
@@ -714,32 +834,7 @@ const TimeTracker = ({
         </div>
       )}
 
-      {/* 資料統計 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
-        <div className="border rounded-lg p-4 flex flex-col bg-white shadow-sm">
-          <div className="flex items-center mb-2">
-            <Clock size={16} className="text-blue-500 mr-2" />
-            <span className="text-gray-600 text-sm font-medium">今日工時</span>
-          </div>
-          <div className="text-xl font-bold">{formatTime(todayHours)}</div>
-        </div>
-        
-        <div className="border rounded-lg p-4 flex flex-col bg-white shadow-sm">
-          <div className="flex items-center mb-2">
-            <DollarSign size={16} className="text-green-500 mr-2" />
-            <span className="text-gray-600 text-sm font-medium">今日收入</span>
-          </div>
-          <div className="text-xl font-bold">{formatCurrency(todayTotal)}</div>
-        </div>
-        
-        <div className="border rounded-lg p-4 flex flex-col bg-white shadow-sm">
-          <div className="flex items-center mb-2">
-            <TrendingUp size={16} className="text-purple-500 mr-2" />
-            <span className="text-gray-600 text-sm font-medium">本週收入</span>
-          </div>
-          <div className="text-xl font-bold">{formatCurrency(weekTotal)}</div>
-        </div>
-      </div>
+
       
       {/* 同步狀態 */}
       {useAPI && (

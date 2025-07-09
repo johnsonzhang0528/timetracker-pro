@@ -294,27 +294,27 @@ const ProjectManager = () => {
       </div>
 
       {/* 統計卡片 */}
-      <div className="stats-grid">
-        <div className="stat-card">
+      <div className="project-stats-grid">
+        <div className="project-stat-card">
           <div className="stat-icon">📊</div>
           <div className="stat-value">{projects.length}</div>
           <div className="stat-label">總專案數</div>
         </div>
-        <div className="stat-card">
+        <div className="project-stat-card">
           <div className="stat-icon">🚀</div>
           <div className="stat-value">
             {projects.filter(p => p.status === 'active').length}
           </div>
           <div className="stat-label">進行中</div>
         </div>
-        <div className="stat-card">
+        <div className="project-stat-card">
           <div className="stat-icon">✅</div>
           <div className="stat-value">
             {projects.filter(p => p.status === 'completed').length}
           </div>
           <div className="stat-label">已完成</div>
         </div>
-        <div className="stat-card">
+        <div className="project-stat-card">
           <div className="stat-icon">💰</div>
           <div className="stat-value">
             ${projects.reduce((sum, p) => sum + ((p.totalHours || 0) * (p.hourlyRate || 0)), 0).toFixed(0)}
