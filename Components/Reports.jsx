@@ -128,9 +128,12 @@ const Reports = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1>工作報告</h1>
+    <div className="reports-manager">
+      <div className="reports-manager-header">
+        <div>
+          <h1 className="reports-manager-title">工作報告</h1>
+          <p className="reports-manager-subtitle">分析您的工作時數與收益</p>
+        </div>
         <div className="filter-controls">
           <select
             value={selectedPeriod}
@@ -156,20 +159,24 @@ const Reports = () => {
       </div>
 
       {/* 統計卡片 */}
-      <div className="stats-grid">
-        <div className="stat-card">
+      <div className="reports-stats-grid">
+        <div className="reports-stat-card">
+          <div className="stat-icon">⏱️</div>
           <div className="stat-value">{formatHours(stats.totalHours)}</div>
           <div className="stat-label">總工作時間</div>
         </div>
-        <div className="stat-card">
+        <div className="reports-stat-card">
+          <div className="stat-icon">💵</div>
           <div className="stat-value">${stats.totalEarnings.toFixed(0)}</div>
           <div className="stat-label">總收益</div>
         </div>
-        <div className="stat-card">
+        <div className="reports-stat-card">
+          <div className="stat-icon">📅</div>
           <div className="stat-value">{formatHours(stats.averageHoursPerDay)}</div>
           <div className="stat-label">日均工作時間</div>
         </div>
-        <div className="stat-card">
+        <div className="reports-stat-card">
+          <div className="stat-icon">📁</div>
           <div className="stat-value">{Object.keys(stats.projectStats).length}</div>
           <div className="stat-label">專案數量</div>
         </div>

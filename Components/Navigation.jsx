@@ -105,14 +105,7 @@ const Navigation = ({ activeTab, setActiveTab, isTracking }) => {
         </div>
 
         {/* 桌面導航 */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          background: '#f9fafb',
-          padding: '4px',
-          borderRadius: '12px'
-        }} className="desktop-nav">
+        <div className="desktop-nav">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -121,35 +114,13 @@ const Navigation = ({ activeTab, setActiveTab, isTracking }) => {
               <button
                 key={item.id}
                 onClick={() => handleTabClick(item.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: isActive ? '#ffffff' : 'transparent',
-                  color: isActive ? '#1f2937' : '#6b7280',
-                  fontSize: '14px',
-                  fontWeight: isActive ? '500' : '400',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: isActive ? '0 1px 2px rgba(0, 0, 0, 0.05)' : 'none'
-                }}
-                onMouseEnter={(e) => !isActive && (e.target.style.background = '#f3f4f6')}
-                onMouseLeave={(e) => !isActive && (e.target.style.background = 'transparent')}
+                className={isActive ? 'active' : ''}
                 title={item.description}
               >
                 <Icon size={16} />
                 <span>{item.shortLabel}</span>
                 {item.id === TABS.TRACKER && isTracking && (
-                  <div style={{
-                    width: '6px',
-                    height: '6px',
-                    background: '#22c55e',
-                    borderRadius: '50%',
-                    animation: 'pulse 2s infinite'
-                  }} />
+                  <div className="tracking-indicator" />
                 )}
               </button>
             );

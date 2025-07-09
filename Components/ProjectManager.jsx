@@ -275,10 +275,25 @@ const ProjectManager = () => {
         <div className="header-actions">
           <div className={`sync-status ${isSyncing ? 'syncing' : useAPI ? 'synced' : 'offline'}`}>
             <div className="sync-status-icon">
-              {isSyncing ? '🔄' : useAPI ? '✅' : '📴'}
+              {isSyncing ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                  <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                </svg>
+              ) : useAPI ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 12l2 2 4-4"/>
+                  <circle cx="12" cy="12" r="9"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                </svg>
+              )}
             </div>
-            <span>
-              {isSyncing ? '同步中...' : useAPI ? '已同步' : '離線模式'}
+            <span className="sync-status-text">
+              {isSyncing ? '同步中...' : useAPI ? 'API 在線' : '離線模式'}
             </span>
           </div>
           
@@ -485,31 +500,47 @@ const ProjectManager = () => {
                 )}
                 
                 <div className="project-details">
-                  <div className="project-detail">
-                    <div className="project-detail-label">時薪</div>
-                    <div className="project-detail-value">${project.hourlyRate || 0}</div>
+                  <div className="project-detail-row">
+                    <div className="project-detail">
+                      <div className="project-detail-icon">💰</div>
+                      <div className="project-detail-content">
+                        <div className="project-detail-label">時薪</div>
+                        <div className="project-detail-value">${project.hourlyRate || 0}</div>
+                      </div>
+                    </div>
+                    <div className="project-detail">
+                      <div className="project-detail-icon">⏱️</div>
+                      <div className="project-detail-content">
+                        <div className="project-detail-label">預估時數</div>
+                        <div className="project-detail-value">{project.estimatedHours || 0}h</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="project-detail">
-                    <div className="project-detail-label">預估時數</div>
-                    <div className="project-detail-value">{project.estimatedHours || 0}h</div>
-                  </div>
-                  <div className="project-detail">
-                    <div className="project-detail-label">建立日期</div>
-                    <div className="project-detail-value">{createdDate}</div>
-                  </div>
-                  <div className="project-detail">
-                    <div className="project-detail-label">狀態</div>
-                    <div className="project-detail-value">
-                      <select
-                        value={project.status}
-                        onChange={(e) => handleStatusChange(project.id, e.target.value)}
-                        className="form-select"
-                      >
-                        <option value="active">進行中</option>
-                        <option value="paused">暫停</option>
-                        <option value="completed">已完成</option>
-                        <option value="cancelled">已取消</option>
-                      </select>
+                  <div className="project-detail-row">
+                    <div className="project-detail">
+                      <div className="project-detail-icon">📅</div>
+                      <div className="project-detail-content">
+                        <div className="project-detail-label">建立日期</div>
+                        <div className="project-detail-value">{createdDate}</div>
+                      </div>
+                    </div>
+                    <div className="project-detail">
+                      <div className="project-detail-icon">🎯</div>
+                      <div className="project-detail-content">
+                        <div className="project-detail-label">狀態</div>
+                        <div className="project-detail-value">
+                          <select
+                            value={project.status}
+                            onChange={(e) => handleStatusChange(project.id, e.target.value)}
+                            className="project-status-select"
+                          >
+                            <option value="active">🟢 進行中</option>
+                            <option value="paused">🟡 暫停</option>
+                            <option value="completed">✅ 已完成</option>
+                            <option value="cancelled">❌ 已取消</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -518,8 +549,22 @@ const ProjectManager = () => {
                   <button
                     className="project-action-btn danger"
                     onClick={() => handleDeleteProject(project.id)}
+                    disabled={isSyncing}
+                    title="刪除專案"
                   >
-                    <span style={{ marginRight: '4px' }}>🗑️</span>
+                    {isSyncing ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c-1 0 2 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                    )}
                     刪除
                   </button>
                 </div>

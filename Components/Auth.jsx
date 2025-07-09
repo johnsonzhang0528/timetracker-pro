@@ -181,106 +181,44 @@ const Auth = ({ onAuthSuccess }) => {
   // 重置密碼請求已發送畫面
   if (resetEmailSent) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        background: '#ffffff',
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        padding: '24px'
-      }}>
-        <div style={{ width: '100%', maxWidth: '400px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h1 style={{ 
-              fontSize: '28px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '8px',
-              letterSpacing: '-0.025em'
-            }}>
+      <div className="auth-container">
+        <div className="auth-wrapper">
+          <div className="auth-header">
+            <h1 className="auth-title">
               TimeTracker Pro
             </h1>
           </div>
           
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-            padding: '32px',
-            textAlign: 'center'
-          }}>
-            <div style={{ 
-              width: '64px',
-              height: '64px',
-              margin: '0 auto 24px',
-              background: 'rgba(16, 185, 129, 0.1)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Mail size={32} color="#10b981" />
+          <div className="auth-card auth-success-card">
+            <div className="auth-success-icon">
+              <Mail size={32} />
             </div>
             
-            <h2 style={{ 
-              fontSize: '20px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '12px'
-            }}>
+            <h2 className="auth-form-title">
               密碼重設郵件已發送
             </h2>
             
-            <p style={{ 
-              fontSize: '14px',
-              color: '#6b7280',
-              marginBottom: '24px'
-            }}>
+            <p className="auth-form-subtitle">
               我們已發送密碼重設指引到您的郵箱：<br />
-              <span style={{ fontWeight: '500', color: '#374151' }}>{formData.email}</span>
+              <span className="auth-email-highlight">{formData.email}</span>
             </p>
             
             <button
               onClick={handleBackToLogin}
-              style={{
-                width: '100%',
-                background: '#3b82f6',
-                color: 'white',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => (e.target.style.background = '#2563eb')}
-              onMouseLeave={(e) => (e.target.style.background = '#3b82f6')}
+              className="btn btn-primary auth-full-btn"
             >
               返回登入
             </button>
             
-            <p style={{ 
-              fontSize: '13px',
-              color: '#9ca3af',
-              marginTop: '16px'
-            }}>
+            <p className="auth-footer-text">
               沒有收到郵件？請檢查垃圾郵件箱，或<br />
               <button
                 onClick={() => {
                   setResetEmailSent(false);
                   handleForgotPassword();
                 }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  padding: '0'
-                }}
+                className="auth-option-link"
+                style={{ background: 'none', border: 'none', padding: '0' }}
               >
                 重新發送重設郵件
               </button>
@@ -294,174 +232,64 @@ const Auth = ({ onAuthSuccess }) => {
   // 忘記密碼表單
   if (forgotPasswordMode) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        background: '#ffffff',
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        padding: '24px'
-      }}>
-        <div style={{ width: '100%', maxWidth: '400px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h1 style={{ 
-              fontSize: '28px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '8px',
-              letterSpacing: '-0.025em'
-            }}>
+      <div className="auth-container">
+        <div className="auth-wrapper">
+          <div className="auth-header">
+            <h1 className="auth-title">
               TimeTracker Pro
             </h1>
           </div>
           
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-            padding: '32px'
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <h2 style={{ 
-                fontSize: '20px',
-                fontWeight: '600',
-                color: '#1f2937',
-                marginBottom: '8px'
-              }}>
+          <div className="auth-card">
+            <div className="auth-form-header">
+              <h2 className="auth-form-title">
                 重設您的密碼
               </h2>
-              <p style={{ 
-                fontSize: '14px',
-                color: '#6b7280',
-                margin: '0'
-              }}>
+              <p className="auth-form-subtitle">
                 輸入您的郵箱，我們將發送重設密碼的指引
               </p>
             </div>
             
             {error && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '12px',
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                color: '#dc2626',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
+              <div className="error-message">
                 <AlertTriangle size={16} />
                 {error}
               </div>
             )}
-            
-            <form onSubmit={handleForgotPassword}>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  電子郵件
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Mail 
-                    style={{ 
-                      position: 'absolute',
-                      left: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: '#9ca3af'
-                    }} 
-                    size={16} 
-                  />
+              <form onSubmit={handleForgotPassword}>
+              <div className="form-group">
+                <label>電子郵件</label>
+                <div className="auth-input-container">
+                  <Mail size={16} className="auth-input-icon" />
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    style={{
-                      width: '100%',
-                      paddingLeft: '40px',
-                      paddingRight: '12px',
-                      paddingTop: '10px',
-                      paddingBottom: '10px',
-                      border: `1px solid ${errors.email ? '#ef4444' : '#d1d5db'}`,
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s, box-shadow 0.2s',
-                      boxSizing: 'border-box'
-                    }}
+                    className={`form-input ${errors.email ? 'error' : ''}`}
                     placeholder="your@email.com"
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#3b82f6';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = errors.email ? '#ef4444' : '#d1d5db';
-                      e.target.style.boxShadow = 'none';
-                    }}
                   />
                 </div>
                 {errors.email && (
-                  <p style={{ 
-                    marginTop: '4px',
-                    fontSize: '12px',
-                    color: '#dc2626',
-                    margin: '4px 0 0 0'
-                  }}>
-                    {errors.email}
-                  </p>
+                  <p className="error-text">{errors.email}</p>
                 )}
               </div>
               
               <button
                 type="submit"
                 disabled={isLoading}
-                style={{
-                  width: '100%',
-                  background: '#3b82f6',
-                  color: 'white',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'background-color 0.2s',
-                  opacity: isLoading ? 0.6 : 1,
-                  marginBottom: '16px'
-                }}
-                onMouseEnter={(e) => !isLoading && (e.target.style.background = '#2563eb')}
-                onMouseLeave={(e) => !isLoading && (e.target.style.background = '#3b82f6')}
+                className="btn btn-primary auth-full-btn"
               >
                 {isLoading ? (
-                  <Loader size={16} className="animate-spin" />
+                  <Loader size={16} className="auth-loading-icon" />
                 ) : '發送重設郵件'}
               </button>
               
-              <div style={{ textAlign: 'center' }}>
+              <div className="auth-switch-container">
                 <button
                   type="button"
                   onClick={handleBackToLogin}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#3b82f6',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    padding: '0'
-                  }}
+                  className="auth-option-link"
+                  style={{ background: 'none', border: 'none' }}
                 >
                   返回登入
                 </button>
@@ -474,60 +302,28 @@ const Auth = ({ onAuthSuccess }) => {
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: '#ffffff',
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      padding: '24px'
-    }}>
-      <div style={{ width: '100%', maxWidth: '400px' }}>
+    <div className="auth-container">
+      <div className="auth-wrapper">
         
         {/* 標題區域 */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ 
-            fontSize: '28px',
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '8px',
-            letterSpacing: '-0.025em'
-          }}>
+        <div className="auth-header">
+          <h1 className="auth-title">
             TimeTracker Pro
           </h1>
-          <p style={{ 
-            fontSize: '16px',
-            color: '#6b7280',
-            margin: '0'
-          }}>
+          <p className="auth-subtitle">
             智能時間追蹤工具
           </p>
         </div>
 
         {/* 登入表單卡片 */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: '12px',
-          border: '1px solid #e5e7eb',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-          padding: '32px'
-        }}>
+        <div className="auth-card">
           
           {/* 表單標題 */}
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <h2 style={{ 
-              fontSize: '20px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '8px'
-            }}>
+          <div className="auth-form-header">
+            <h2 className="auth-form-title">
               {isLogin ? '歡迎回來' : '開始使用'}
             </h2>
-            <p style={{ 
-              fontSize: '14px',
-              color: '#6b7280',
-              margin: '0'
-            }}>
+            <p className="auth-form-subtitle">
               {isLogin ? '登入您的帳戶繼續使用' : '建立帳戶，開始追蹤您的時間'}
             </p>
           </div>
@@ -538,26 +334,7 @@ const Auth = ({ onAuthSuccess }) => {
               <button
                 onClick={handleDemoLogin}
                 disabled={isLoading}
-                style={{
-                  width: '100%',
-                  marginBottom: '16px',
-                  padding: '12px 16px',
-                  background: '#22c55e',
-                  color: 'white',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'background-color 0.2s',
-                  opacity: isLoading ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => !isLoading && (e.target.style.background = '#16a34a')}
-                onMouseLeave={(e) => !isLoading && (e.target.style.background = '#22c55e')}
+                className="btn btn-success auth-demo-btn"
               >
                 快速體驗演示帳號
               </button>
@@ -592,15 +369,8 @@ const Auth = ({ onAuthSuccess }) => {
 
           {/* 錯誤提示 */}
           {(error || errors.general) && (
-            <div style={{
-              marginBottom: '16px',
-              padding: '12px',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              color: '#dc2626',
-              fontSize: '14px'
-            }}>
+            <div className="error-message">
+              <AlertTriangle size={16} />
               {error || errors.general}
             </div>
           )}
@@ -610,127 +380,39 @@ const Auth = ({ onAuthSuccess }) => {
             
             {/* 姓名欄位 (僅註冊時顯示) */}
             {!isLogin && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  姓名
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <User 
-                    style={{ 
-                      position: 'absolute',
-                      left: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: '#9ca3af'
-                    }} 
-                    size={16} 
-                  />
+              <div className="form-group">
+                <label>姓名</label>
+                <div className="auth-input-container">
+                  <User size={16} className="auth-input-icon" />
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    style={{
-                      width: '100%',
-                      paddingLeft: '40px',
-                      paddingRight: '12px',
-                      paddingTop: '10px',
-                      paddingBottom: '10px',
-                      border: `1px solid ${errors.name ? '#ef4444' : '#d1d5db'}`,
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s, box-shadow 0.2s',
-                      boxSizing: 'border-box'
-                    }}
+                    className={`form-input ${errors.name ? 'error' : ''}`}
                     placeholder="請輸入您的姓名"
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#3b82f6';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = errors.name ? '#ef4444' : '#d1d5db';
-                      e.target.style.boxShadow = 'none';
-                    }}
                   />
                 </div>
                 {errors.name && (
-                  <p style={{ 
-                    marginTop: '4px',
-                    fontSize: '12px',
-                    color: '#dc2626',
-                    margin: '4px 0 0 0'
-                  }}>
-                    {errors.name}
-                  </p>
+                  <p className="error-text">{errors.name}</p>
                 )}
               </div>
             )}
 
             {/* 電子郵件 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                電子郵件
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Mail 
-                  style={{ 
-                    position: 'absolute',
-                    left: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: '#9ca3af'
-                  }} 
-                  size={16} 
-                />
+            <div className="form-group">
+              <label>電子郵件</label>
+              <div className="auth-input-container">
+                <Mail size={16} className="auth-input-icon" />
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  style={{
-                    width: '100%',
-                    paddingLeft: '40px',
-                    paddingRight: '12px',
-                    paddingTop: '10px',
-                    paddingBottom: '10px',
-                    border: `1px solid ${errors.email ? '#ef4444' : '#d1d5db'}`,
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s, box-shadow 0.2s',
-                    boxSizing: 'border-box'
-                  }}
+                  className={`form-input ${errors.email ? 'error' : ''}`}
                   placeholder="your@email.com"
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#3b82f6';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = errors.email ? '#ef4444' : '#d1d5db';
-                    e.target.style.boxShadow = 'none';
-                  }}
                 />
               </div>
               {errors.email && (
-                <p style={{ 
-                  marginTop: '4px',
-                  fontSize: '12px',
-                  color: '#dc2626',
-                  margin: '4px 0 0 0'
-                }}>
-                  {errors.email}
-                </p>
+                <p className="error-text">{errors.email}</p>
               )}
             </div>
 

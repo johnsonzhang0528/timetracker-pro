@@ -155,9 +155,12 @@ const Invoice = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1>發票管理</h1>
+    <div className="invoice-manager">
+      <div className="invoice-manager-header">
+        <div>
+          <h1 className="invoice-manager-title">發票管理</h1>
+          <p className="invoice-manager-subtitle">管理您的發票並追蹤收款狀態</p>
+        </div>
         <button 
           className="btn btn-primary"
           onClick={() => setIsCreating(true)}
@@ -167,24 +170,28 @@ const Invoice = () => {
       </div>
 
       {/* 統計卡片 */}
-      <div className="stats-grid">
-        <div className="stat-card">
+      <div className="invoice-stats-grid">
+        <div className="invoice-stat-card">
+          <div className="stat-icon">📊</div>
           <div className="stat-value">{invoices.length}</div>
           <div className="stat-label">總發票數</div>
         </div>
-        <div className="stat-card">
+        <div className="invoice-stat-card">
+          <div className="stat-icon">📝</div>
           <div className="stat-value">
             {invoices.filter(i => i.status === 'draft').length}
           </div>
           <div className="stat-label">草稿</div>
         </div>
-        <div className="stat-card">
+        <div className="invoice-stat-card">
+          <div className="stat-icon">📤</div>
           <div className="stat-value">
             {invoices.filter(i => i.status === 'sent').length}
           </div>
           <div className="stat-label">已發送</div>
         </div>
-        <div className="stat-card">
+        <div className="invoice-stat-card">
+          <div className="stat-icon">💰</div>
           <div className="stat-value">
             ${invoices.reduce((sum, i) => i.status === 'paid' ? sum + i.totalAmount : sum, 0).toFixed(0)}
           </div>
@@ -194,11 +201,11 @@ const Invoice = () => {
 
       {/* 生成發票表單 */}
       {isCreating && (
-        <div className="form-container">
+        <div className="add-invoice-form">
           <div className="form-header">
             <h3>生成新發票</h3>
             <button 
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary"
               onClick={() => setIsCreating(false)}
             >
               ✕ 關閉

@@ -522,12 +522,12 @@ const TimeTracker = ({
       </div>
 
       {/* 優化的統計卡片 */}
-      <div className="stats-grid">
+      <div className="tracker-stats-grid">
         {/* 今日統計 - 合併時間和收入 */}
-        <div className="stat-card">
+        <div className="tracker-stat-card">
           <div className="flex items-center justify-between mb-2">
             <div className="stat-label">今日進度</div>
-            <Clock size={16} style={{ color: 'var(--primary)' }} />
+            <Clock size={16} style={{ color: '#3b82f6' }} />
           </div>
           {todayHours > 0 ? (
             <>
@@ -538,15 +538,15 @@ const TimeTracker = ({
               <div style={{
                 width: '100%',
                 height: '4px',
-                backgroundColor: 'var(--gray-200)',
+                backgroundColor: '#e2e8f0',
                 borderRadius: '2px',
-                marginTop: 'var(--space-2)',
+                marginTop: '8px',
                 overflow: 'hidden'
               }}>
                 <div style={{
                   width: `${todayProgress}%`,
                   height: '100%',
-                  backgroundColor: 'var(--primary)',
+                  backgroundColor: '#3b82f6',
                   transition: 'width 0.3s ease'
                 }}></div>
               </div>
@@ -560,10 +560,10 @@ const TimeTracker = ({
         </div>
 
         {/* 本週統計 */}
-        <div className="stat-card">
+        <div className="tracker-stat-card">
           <div className="flex items-center justify-between mb-2">
             <div className="stat-label">本週概覽</div>
-            <TrendingUp size={16} style={{ color: 'var(--success)' }} />
+            <TrendingUp size={16} style={{ color: '#10b981' }} />
           </div>
           {weekHours > 0 ? (
             <>
@@ -582,7 +582,7 @@ const TimeTracker = ({
                 <div style={{
                   width: `${weekProgress}%`,
                   height: '100%',
-                  backgroundColor: 'var(--success)',
+                  backgroundColor: '#10b981',
                   transition: 'width 0.3s ease'
                 }}></div>
               </div>
@@ -596,10 +596,10 @@ const TimeTracker = ({
         </div>
 
         {/* 本月統計 */}
-        <div className="stat-card">
+        <div className="tracker-stat-card">
           <div className="flex items-center justify-between mb-2">
             <div className="stat-label">本月表現</div>
-            <Target size={16} style={{ color: 'var(--info)' }} />
+            <Target size={16} style={{ color: '#06b6d4' }} />
           </div>
           {monthHours > 0 ? (
             <>
@@ -610,15 +610,15 @@ const TimeTracker = ({
               <div style={{
                 width: '100%',
                 height: '4px',
-                backgroundColor: 'var(--gray-200)',
+                backgroundColor: '#e2e8f0',
                 borderRadius: '2px',
-                marginTop: 'var(--space-2)',
+                marginTop: '8px',
                 overflow: 'hidden'
               }}>
                 <div style={{
                   width: `${monthProgress}%`,
                   height: '100%',
-                  backgroundColor: 'var(--info)',
+                  backgroundColor: '#06b6d4',
                   transition: 'width 0.3s ease'
                 }}></div>
               </div>
@@ -632,10 +632,10 @@ const TimeTracker = ({
         </div>
 
         {/* 效率指標 */}
-        <div className="stat-card">
+        <div className="tracker-stat-card">
           <div className="flex items-center justify-between mb-2">
             <div className="stat-label">效率指標</div>
-            <DollarSign size={16} style={{ color: 'var(--warning)' }} />
+            <DollarSign size={16} style={{ color: '#f59e0b' }} />
           </div>
           {realAverageRate > 0 ? (
             <>
